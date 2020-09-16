@@ -1,11 +1,13 @@
+const env = require('./src/env'); // eslint-disable-line
+
 module.exports = {
     'type': 'postgres',
-    'host': process.env.TYPEORM_HOST,
-    'port': process.env.TYPEORM_PORT,
-    'username': process.env.TYPEORM_USERNAME,
-    'password': process.env.TYPEORM_PASSWORD,
-    'database': process.env.TYPEORM_DATABASE,
-    'logging': process.env.TYPEORM_LOGGING,
+    'host': env.default.TYPEORM_HOST,
+    'port': env.default.TYPEORM_PORT,
+    'username': env.default.TYPEORM_USERNAME,
+    'password': env.default.TYPEORM_PASSWORD,
+    'database': env.default.TYPEORM_DATABASE,
+    'logging': env.default.TYPEORM_LOGGING,
     "entities": process.env.NODE_ENV === 'production' ?
       [__dirname + "/dist/models/*.js", __dirname + "/dist/models/**/*.js",] :
       ["src/models/*.ts", "src/models/**/*.ts"],
