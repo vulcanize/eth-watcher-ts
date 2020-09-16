@@ -19,27 +19,27 @@ export default envalid.cleanEnv(
 	process.env,
 	{
 		PORT: envalid.port({
-			default: tomlConfig?.APP?.PORT || 3000,
+			default: tomlConfig?.app?.port || 3000,
 			desc: 'The port to start the server on'
 		}),
 
 		TYPEORM_HOST: envalid.host({
-			default: tomlConfig?.DATABASE?.TYPEORM_HOST
+			default: tomlConfig?.database?.hostname
 		}),
 		TYPEORM_USERNAME: envalid.str({
-			default: tomlConfig?.DATABASE?.TYPEORM_USERNAME
+			default: tomlConfig?.database?.user
 		}),
 		TYPEORM_PASSWORD: envalid.str({
-			default: tomlConfig?.DATABASE?.TYPEORM_PASSWORD
+			default: tomlConfig?.database?.password
 		}),
 		TYPEORM_DATABASE: envalid.str({
-			default: tomlConfig?.DATABASE?.TYPEORM_DATABASE
+			default: tomlConfig?.database?.name
 		}),
 		TYPEORM_PORT: envalid.port({
-			default: tomlConfig?.DATABASE?.TYPEORM_PORT
+			default: tomlConfig?.database?.port
 		}),
 		TYPEORM_LOGGING: envalid.bool({
-			default: tomlConfig?.DATABASE?.TYPEORM_LOGGING
+			default: false
 		})
 	},
 	{ strict: true }
