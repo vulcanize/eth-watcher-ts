@@ -18,27 +18,27 @@ try {
 export default envalid.cleanEnv(
 	process.env,
 	{
-		PORT: envalid.port({
+		APP_PORT: envalid.port({
 			default: tomlConfig?.app?.port || 3000,
 			desc: 'The port to start the server on'
 		}),
 
-		TYPEORM_HOST: envalid.host({
+		DATABASE_HOSTNAME: envalid.host({
 			default: tomlConfig?.database?.hostname
 		}),
-		TYPEORM_USERNAME: envalid.str({
+		DATABASE_USER: envalid.str({
 			default: tomlConfig?.database?.user
 		}),
-		TYPEORM_PASSWORD: envalid.str({
+		DATABASE_PASSWORD: envalid.str({
 			default: tomlConfig?.database?.password
 		}),
-		TYPEORM_DATABASE: envalid.str({
+		DATABASE_NAME: envalid.str({
 			default: tomlConfig?.database?.name
 		}),
-		TYPEORM_PORT: envalid.port({
+		DATABASE_PORT: envalid.port({
 			default: tomlConfig?.database?.port
 		}),
-		TYPEORM_LOGGING: envalid.bool({
+		DATABASE_LOGGING: envalid.bool({
 			default: false
 		})
 	},
