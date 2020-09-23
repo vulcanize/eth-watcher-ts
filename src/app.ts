@@ -3,12 +3,12 @@ import * as cors from 'cors';
 import * as express from 'express';
 import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes';
 import Routes from './routes';
-import Apollo from './apollo';
+import GraphqlClient from './graphqlClient';
 
 class App {
 
 	public app: express.Application;
-	public apolloClient: Apollo;
+	public graphqlClient: GraphqlClient;
 	public routePrv: Routes = new Routes();
 
 	public constructor () {
@@ -16,8 +16,8 @@ class App {
 		this.config();
 		this.routePrv.routes(this.app);
 
-		this.apolloClient = new Apollo();
-		this.testApollo();
+		this.graphqlClient = new GraphqlClient();
+		this.testGraphqlClient();
 
 		// Error handler
 		this.app.use((error, req, res, next) => {
@@ -48,8 +48,8 @@ class App {
 		this.app.use(bodyParser.urlencoded({ extended: false }));
 	}
 
-	private testApollo(): void{
-		this.apolloClient.subscribe(
+	private testGraphqlClient(): void{
+		this.graphqlClient.subscribe(
 			`
 				subscription MySubscription {
 					listen(topic: "receipt_cids") {

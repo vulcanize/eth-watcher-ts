@@ -6,7 +6,7 @@ import * as ws from 'ws';
 import * as fetch from "node-fetch";
 import env from './env';
 
-export default class Apollo {
+export default class GraphqlClient {
 
 	public client: ApolloClient<NormalizedCacheObject> = null;
 
