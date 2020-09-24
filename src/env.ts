@@ -40,7 +40,11 @@ export default envalid.cleanEnv(
 		}),
 		DATABASE_LOGGING: envalid.bool({
 			default: false
-		})
+		}),
+
+		GRAPHQL_URI: envalid.url({
+			default: tomlConfig?.graphql?.uri
+		}),
 	},
 	{ strict: true }
 );
