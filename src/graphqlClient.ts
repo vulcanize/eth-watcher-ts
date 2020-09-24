@@ -10,9 +10,9 @@ export default class GraphqlClient {
 
 	public client: ApolloClient<NormalizedCacheObject> = null;
 
-	public constructor (endpoint = env.GRAPHQL_URI) {
-		const GRAPHQL_ENDPOINT = `ws://${endpoint}/graphql`;
-		const HTTP_ENDPOINT = `http://${endpoint}/graphql`;
+	public constructor (uri = env.GRAPHQL_URI) {
+		const GRAPHQL_ENDPOINT = `${uri.replace('http', 'ws')}/graphql`; // wss://... or ws://...
+		const HTTP_ENDPOINT = `${uri}/graphql`; // https://... or http://...
 
 		const subscriptionClient = new SubscriptionClient(GRAPHQL_ENDPOINT, {
 			reconnect: true,
