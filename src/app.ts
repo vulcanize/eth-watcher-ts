@@ -4,8 +4,10 @@ import * as express from 'express';
 import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes';
 import Routes from './routes';
 import GraphqlClient from './graphqlClient';
+import ContractService from './services/contractService';
+import { keccak256 } from 'ethereumjs-util'
 
-class App {
+export default class App {
 
 	public app: express.Application;
 	public graphqlClient: GraphqlClient;
@@ -17,7 +19,6 @@ class App {
 		this.routePrv.routes(this.app);
 
 		this.graphqlClient = new GraphqlClient();
-		this.testGraphqlClient();
 
 		// Error handler
 		this.app.use((error, req, res, next) => {
@@ -48,7 +49,14 @@ class App {
 		this.app.use(bodyParser.urlencoded({ extended: false }));
 	}
 
-	private testGraphqlClient(): void{
+	public async subscribeToGraphql(): Promise<void>{
+		console.log('Subscribe to GraphQL');
+
+		const contractService = new ContractService();
+		const contracts = await contractService.loadContracts();
+
+		console.log(`Loaded ${contracts.length} contracts config`);
+
 		this.graphqlClient.subscribe(
 			`
 				subscription MySubscription {
@@ -71,9 +79,36 @@ class App {
 					}
 				}
 			`,
-			(data) => console.log(data),
+			(data) => {
+				const relatedNode = data?.data?.listen?.relatedNode;
+				if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
+					return;
+				}
+
+				const target = contracts.find((contract) => contract.address === relatedNode.logContracts[0]);
+				if (!target) {
+					return;
+				}
+
+				console.log('Target contract', target);
+
+				const method = (target.abi as Array<{ name: string; type: string; inputs: { type }[] } >).find((a) => a.name = 'MessageChanged');
+				if (!method) {
+					return;
+				}
+
+				const payload = `${method.name}(${method.inputs.map(input => input.type).join(',')})`;
+
+				console.log('payload', payload);
+
+				const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+				console.log('hash', hash);
+				console.log('topic0S', relatedNode.topic0S[0])
+
+				if (relatedNode.topic0S && relatedNode.topic0S.length && relatedNode.topic0S[0] === hash) {
+					console.log('Bingo!');
+				}
+			},
 		);
 	}
 }
-
-export default new App().app;

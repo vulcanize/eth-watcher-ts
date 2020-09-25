@@ -22,6 +22,7 @@
     "body-parser": "^1.18.3",
     "cors": "^2.8.5",
     "envalid": "^5.0.0",
+    "ethereumjs-util": "^7.0.5",
     "express": "^4.17.1",
     "graphql": "^15.3.0",
     "http-status-codes": "^1.4.0",
