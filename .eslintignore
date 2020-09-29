@@ -1,3 +1,4 @@
 src/migrations/**
 node_modules
 dist
+dev

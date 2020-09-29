@@ -74,6 +74,7 @@ export default class App {
 							topic2S
 							topic3S
 							txId
+							mhKey
 						}
 						}
 					}
@@ -92,12 +93,12 @@ export default class App {
 
 				console.log('Target contract', target);
 
-				const method = (target.abi as Array<{ name: string; type: string; inputs: { type }[] } >).find((a) => a.name = 'MessageChanged');
-				if (!method) {
+				const event = (target.abi as Array<{ name: string; type: string; inputs: { type }[] } >).find((a) => a.name = 'MessageChanged');
+				if (!event) {
 					return;
 				}
 
-				const payload = `${method.name}(${method.inputs.map(input => input.type).join(',')})`;
+				const payload = `${event.name}(${event.inputs.map(input => input.type).join(',')})`;
 
 				console.log('payload', payload);
 
