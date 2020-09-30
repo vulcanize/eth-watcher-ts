@@ -1,11 +1,13 @@
 import * as bodyParser from 'body-parser';
 import * as cors from 'cors';
 import * as express from 'express';
+import * as abi from 'ethereumjs-abi';
 import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes';
+import { keccak256, rlp } from 'ethereumjs-util'
 import Routes from './routes';
 import GraphqlClient from './graphqlClient';
 import ContractService from './services/contractService';
-import { keccak256 } from 'ethereumjs-util'
+
 
 export default class App {
 
@@ -61,20 +63,22 @@ export default class App {
 			`
 				subscription MySubscription {
 					listen(topic: "receipt_cids") {
-						relatedNodeId
 						relatedNode {
-						nodeId
 						... on ReceiptCid {
 							id
-							contract
-							contractHash
+							mhKey
 							logContracts
+							nodeId
 							topic0S
 							topic1S
 							topic2S
 							topic3S
 							txId
-							mhKey
+							cid
+							contract
+							blockByMhKey {
+								data
+							}
 						}
 						}
 					}
@@ -82,6 +86,7 @@ export default class App {
 			`,
 			(data) => {
 				const relatedNode = data?.data?.listen?.relatedNode;
+				
 				if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
 					return;
 				}
@@ -108,6 +113,25 @@ export default class App {
 
 				if (relatedNode.topic0S && relatedNode.topic0S.length && relatedNode.topic0S[0] === hash) {
 					console.log('Bingo!');
+
+					if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
+						const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
+						const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+						// console.log(decoded[0].toString('hex'));
+						// console.log(decoded[1].toString('hex'));
+						// console.log(decoded[2].toString('hex'));
+
+						const addressFromBlock = decoded[3][0][0].toString('hex');
+						console.log('address', addressFromBlock);
+
+						const hashFromBlock = decoded[3][0][1][0].toString('hex');
+						console.log(hashFromBlock);
+
+						const message = abi.rawDecode([ 'string' ], decoded[3][0][2])[0]
+						console.log(message);
+					}
+					
 				}
 			},
 		);
