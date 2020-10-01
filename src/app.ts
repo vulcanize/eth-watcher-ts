@@ -59,8 +59,9 @@ export default class App {
 		const dataService = new DataService();
 
 		const contracts = await contractService.loadContracts();
+		const events = await contractService.loadEvents();
 
-		console.log(`Loaded ${contracts.length} contracts config`);
+		console.log(`Loaded ${contracts.length} contracts config and ${events.length} events`);
 
 		this.graphqlClient.subscribe(
 			`
@@ -101,56 +102,57 @@ export default class App {
 
 				console.log('Target contract', target);
 
-				const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
-				const event = contractAbi.find((a) => a.name = 'MessageChanged');
-				if (!event) {
-					return;
-				}
+				for (const e of events) {
+					const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
+					const event = contractAbi.find((a) => a.name = e.name);
+					if (!event) {
+						return;
+					}
 
-				const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
+					const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
 
-				console.log(event.inputs);
-				console.log('payload', payload);
+					console.log(event.inputs);
+					console.log('payload', payload);
 
-				const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
-				console.log('hash', hash);
-				console.log('topic0S', relatedNode.topic0S[0])
+					const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+					console.log('hash', hash);
+					console.log('topic0S', relatedNode.topic0S[0])
 
-				if (relatedNode.topic0S && relatedNode.topic0S.length && relatedNode.topic0S[0] === hash) {
-					console.log('Bingo!');
+					if (relatedNode.topic0S && relatedNode.topic0S.length && relatedNode.topic0S[0] === hash) {
+						console.log('Bingo!');
 
-					if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-						const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
-						const decoded: any = rlp.decode(buffer); // eslint-disable-line
+						if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
+							const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
+							const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
-						// console.log(decoded[0].toString('hex'));
-						// console.log(decoded[1].toString('hex'));
-						// console.log(decoded[2].toString('hex'));
+							// console.log(decoded[0].toString('hex'));
+							// console.log(decoded[1].toString('hex'));
+							// console.log(decoded[2].toString('hex'));
 
-						const addressFromBlock = decoded[3][0][0].toString('hex');
-						console.log('address', addressFromBlock);
+							const addressFromBlock = decoded[3][0][0].toString('hex');
+							console.log('address', addressFromBlock);
 
-						const hashFromBlock = decoded[3][0][1][0].toString('hex');
-						console.log(hashFromBlock);
+							const hashFromBlock = decoded[3][0][1][0].toString('hex');
+							console.log(hashFromBlock);
 
-						const messages = abi.rawDecode(event.inputs.map(input => input.internalType), decoded[3][0][2])
-						console.log(messages);
+							const messages = abi.rawDecode(event.inputs.map(input => input.internalType), decoded[3][0][2])
+							console.log(messages);
 
-						const indexedEvents = event.inputs.filter(input => input.indexed);
-						console.log('indexedEvents', indexedEvents);
+							const indexedEvents = event.inputs.filter(input => input.indexed);
+							console.log('indexedEvents', indexedEvents);
 
-						const topic0S = abi.rawDecode([ 'uint32' ], Buffer.from(relatedNode.topic0S[0], 'hex'));
-						console.log('topic0S', topic0S);
+							const topic0S = abi.rawDecode([ 'uint32' ], Buffer.from(relatedNode.topic0S[0], 'hex'));
+							console.log('topic0S', topic0S);
 
-						const json = {
-							topic0S,
-							messages,
-							indexedEvents,
+							const json = {
+								topic0S,
+								messages,
+								indexedEvents,
+							}
+
+							const newEvent = await dataService.addEvent(e.eventId ,target.contractId, json, relatedNode.mhKey);
+							console.log(newEvent);
 						}
-
-						// TODO: use contract.event insteadof 1 and 'MessageChanged'
-						const newEvent = await dataService.addEvent(1 ,target.contractId, json, relatedNode.mhKey);
-						console.log(newEvent);
 					}
 				}
 			},
