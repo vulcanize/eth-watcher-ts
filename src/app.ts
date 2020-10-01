@@ -7,6 +7,7 @@ import { keccak256, rlp } from 'ethereumjs-util'
 import Routes from './routes';
 import GraphqlClient from './graphqlClient';
 import ContractService from './services/contractService';
+import DataService from './services/dataService';
 
 
 export default class App {
@@ -55,6 +56,8 @@ export default class App {
 		console.log('Subscribe to GraphQL');
 
 		const contractService = new ContractService();
+		const dataService = new DataService();
+
 		const contracts = await contractService.loadContracts();
 
 		console.log(`Loaded ${contracts.length} contracts config`);
@@ -84,7 +87,7 @@ export default class App {
 					}
 				}
 			`,
-			(data) => {
+			async (data) => {
 				const relatedNode = data?.data?.listen?.relatedNode;
 				
 				if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
@@ -98,13 +101,15 @@ export default class App {
 
 				console.log('Target contract', target);
 
-				const event = (target.abi as Array<{ name: string; type: string; inputs: { type }[] } >).find((a) => a.name = 'MessageChanged');
+				const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
+				const event = contractAbi.find((a) => a.name = 'MessageChanged');
 				if (!event) {
 					return;
 				}
 
-				const payload = `${event.name}(${event.inputs.map(input => input.type).join(',')})`;
+				const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
 
+				console.log(event.inputs);
 				console.log('payload', payload);
 
 				const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
@@ -128,10 +133,25 @@ export default class App {
 						const hashFromBlock = decoded[3][0][1][0].toString('hex');
 						console.log(hashFromBlock);
 
-						const message = abi.rawDecode([ 'string' ], decoded[3][0][2])[0]
-						console.log(message);
+						const messages = abi.rawDecode(event.inputs.map(input => input.internalType), decoded[3][0][2])
+						console.log(messages);
+
+						const indexedEvents = event.inputs.filter(input => input.indexed);
+						console.log('indexedEvents', indexedEvents);
+
+						const topic0S = abi.rawDecode([ 'uint32' ], Buffer.from(relatedNode.topic0S[0], 'hex'));
+						console.log('topic0S', topic0S);
+
+						const json = {
+							topic0S,
+							messages,
+							indexedEvents,
+						}
+
+						// TODO: use contract.event insteadof 1 and 'MessageChanged'
+						const newEvent = await dataService.addEvent(1 ,target.contractId, json, relatedNode.mhKey);
+						console.log(newEvent);
 					}
-					
 				}
 			},
 		);
