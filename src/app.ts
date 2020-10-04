@@ -58,8 +58,6 @@ export default class App {
 
 		const dataService = new DataService();
 
-		Store.getStore(); // TODO: remove
-
 		this.graphqlClient.subscribe(
 			`
 				subscription MySubscription {
@@ -133,22 +131,31 @@ export default class App {
 							const hashFromBlock = decoded[3][0][1][0].toString('hex');
 							console.log(hashFromBlock);
 
-							const messages = abi.rawDecode(event.inputs.map(input => input.internalType), decoded[3][0][2])
-							console.log(messages);
-
+							const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 							const indexedEvents = event.inputs.filter(input => input.indexed);
-							console.log('indexedEvents', indexedEvents);
 
-							const topic0S = abi.rawDecode([ 'uint32' ], Buffer.from(relatedNode.topic0S[0], 'hex'));
-							console.log('topic0S', topic0S);
+							const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][0][2]);
 
-							const json = {
-								topic0S,
-								messages,
-								indexedEvents,
-							}
+							const array = [];
+							indexedEvents.forEach((event, index) => {
+								array.push({
+									name: event.name,
+									value: abi.rawDecode([ event.internalType ], Buffer.from(relatedNode[`topic${index}S`][0], 'hex')),
+									internalType: event.internalType,
+								});
+							});
+							
+							notIndexedEvents.forEach((event, index) => {
+								array.push({
+									name: event.name,
+									value: messages[index],
+									internalType: event.internalType,
+								});
+							});
 
-							const newEvent = await dataService.addEvent(e.eventId ,target.contractId, json, relatedNode.mhKey);
+							console.log('Data to save', array);
+
+							const newEvent = await dataService.addEvent(e.eventId ,target.contractId, array, relatedNode.mhKey);
 							console.log(newEvent);
 						}
 					}

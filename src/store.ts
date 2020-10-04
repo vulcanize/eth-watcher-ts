@@ -23,13 +23,16 @@ export default class Store {
 		if (!Store.store) {
 			Store.store = new Store();
 		}
-		
-		Store.store.syncData(); // init
-
-		setInterval(Store.store.syncData, INTERVAL)
 
 		return Store.store;
-	}
+    }
+    
+    public static init(): void {
+        const store = this.getStore();
+
+        Store.store.syncData();
+        setInterval(store.syncData, INTERVAL);
+    }
 
 	public getContracts(): Contract[] {
 		return this.contracts;

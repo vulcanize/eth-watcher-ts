@@ -4,13 +4,17 @@ import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 
 export default class DataService {
 
-	public async addEvent (eventId: number, contractId: number, data: object, mhKey: string): Promise<void> {
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string): Promise<void> {
 
-		// TODO: use custom name and data fields
-		const tableName = 'data.contract_1';
+		const tableName = `data.event_for_contract_id_${contractId}`;
+
+		if (!data) {
+			return;
+		}
 
 		const queryRunner = getConnection().createQueryRunner();
-		const table = await queryRunner.getTable("data.contract_1");
+		const table = await queryRunner.getTable(tableName);
 
 		if (!table) {
 			const tableOptions: TableOptions = {
@@ -35,14 +39,21 @@ export default class DataService {
 				]
 			};
 
+			data.forEach((line) => {
+				tableOptions.columns.push({
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: 'text', // TODO: use line.type
+				});
+			});
+
 			await queryRunner.createTable(new Table(tableOptions), true);
 		}
 
 		await queryRunner.query(`
 			INSERT INTO ${tableName}
-				(event_id, contract_id, mh_key)
+				(event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 			VALUES
-				(${eventId}, ${contractId}, '${mhKey}');
+				(${eventId}, ${contractId}, '${mhKey}', ${data.map((line) => "'" + line.value + "'").join(',')});
 		`);
 	}
 
