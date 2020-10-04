@@ -6,8 +6,9 @@ import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes';
 import { keccak256, rlp } from 'ethereumjs-util'
 import Routes from './routes';
 import GraphqlClient from './graphqlClient';
-import ContractService from './services/contractService';
+import Store from './store';
 import DataService from './services/dataService';
+import Event from './models/contract/event';
 
 
 export default class App {
@@ -55,13 +56,9 @@ export default class App {
 	public async subscribeToGraphql(): Promise<void>{
 		console.log('Subscribe to GraphQL');
 
-		const contractService = new ContractService();
 		const dataService = new DataService();
 
-		const contracts = await contractService.loadContracts();
-		const events = await contractService.loadEvents();
-
-		console.log(`Loaded ${contracts.length} contracts config and ${events.length} events`);
+		Store.getStore(); // TODO: remove
 
 		this.graphqlClient.subscribe(
 			`
@@ -95,13 +92,14 @@ export default class App {
 					return;
 				}
 
-				const target = contracts.find((contract) => contract.address === relatedNode.logContracts[0]);
+				const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
 				if (!target) {
 					return;
 				}
 
 				console.log('Target contract', target);
 
+				const events: Event[] = Store.getStore().getEvents();
 				for (const e of events) {
 					const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
 					const event = contractAbi.find((a) => a.name = e.name);
