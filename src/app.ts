@@ -100,9 +100,10 @@ export default class App {
 				const events: Event[] = Store.getStore().getEvents();
 				for (const e of events) {
 					const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
-					const event = contractAbi.find((a) => a.name = e.name);
+					const event = contractAbi.find((a) => a.name === e.name);
+
 					if (!event) {
-						return;
+						continue;
 					}
 
 					const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
@@ -114,7 +115,8 @@ export default class App {
 					console.log('hash', hash);
 					console.log('topic0S', relatedNode.topic0S[0])
 
-					if (relatedNode.topic0S && relatedNode.topic0S.length && relatedNode.topic0S[0] === hash) {
+
+					if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
 						console.log('Bingo!');
 
 						if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
@@ -138,13 +140,19 @@ export default class App {
 
 							const array = [];
 							indexedEvents.forEach((event, index) => {
-								array.push({
-									name: event.name,
-									value: abi.rawDecode([ event.internalType ], Buffer.from(relatedNode[`topic${index}S`][0], 'hex')),
-									internalType: event.internalType,
-								});
+								const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
+
+								try {
+									array.push({
+										name: event.name,
+										value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
+										internalType: event.internalType,
+									});
+								} catch (e) {
+									console.log('error', e);
+								}
 							});
-							
+					
 							notIndexedEvents.forEach((event, index) => {
 								array.push({
 									name: event.name,
