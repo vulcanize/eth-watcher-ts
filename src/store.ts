@@ -3,8 +3,9 @@ import Event from "./models/contract/event";
 import Method from "./models/contract/method";
 import ContractService from "./services/contractService";
 
+import env from './env';
+
 const contractService = new ContractService();
-const INTERVAL = 5000; // 5 sec
 
 export default class Store {
 	private static store: Store;
@@ -31,7 +32,7 @@ export default class Store {
         const store = this.getStore();
 
         Store.store.syncData();
-        setInterval(store.syncData, INTERVAL);
+        setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
     }
 
 	public getContracts(): Contract[] {
