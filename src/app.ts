@@ -78,6 +78,11 @@ export default class App {
 							blockByMhKey {
 								data
 							}
+							ethTransactionCidByTxId {
+								ethHeaderCidByHeaderId {
+									blockNumber
+								}
+							}
 						}
 						}
 					}
@@ -150,7 +155,7 @@ export default class App {
 										internalType: event.internalType,
 									});
 								} catch (e) {
-									console.log('error', e);
+									console.log('Error wtih', event.name, event.internalType, e.message);
 								}
 							});
 					
@@ -164,7 +169,13 @@ export default class App {
 
 							console.log('Data to save', array);
 
-							const newEvent = await dataService.addEvent(e.eventId ,target.contractId, array, relatedNode.mhKey);
+							const newEvent = await dataService.addEvent(
+								e.eventId,
+								target.contractId,
+								array,
+								relatedNode.mhKey,
+								relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+							);
 							console.log(newEvent);
 						}
 					}

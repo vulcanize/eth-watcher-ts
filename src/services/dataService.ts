@@ -7,7 +7,7 @@ import ProgressRepository from '../repositories/data/progressRepository';
 export default class DataService {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string, blockNumber: number): Promise<void> {
 
 		const tableName = `data.event_for_contract_id_${contractId}`;
 
@@ -68,7 +68,7 @@ VALUES
 				console.log(err);	
 			}
 
-			// await progressRepository.add(contractId, eventId, );
+			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
