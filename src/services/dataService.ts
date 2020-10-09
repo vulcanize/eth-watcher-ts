@@ -2,6 +2,7 @@
 import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import ProgressRepository from '../repositories/data/progressRepository';
 
 export default class DataService {
 
@@ -14,54 +15,61 @@ export default class DataService {
 			return;
 		}
 
-		const queryRunner = getConnection().createQueryRunner();
-		const table = await queryRunner.getTable(tableName);
+		return getConnection().transaction(async (entityManager) => {
 
-		if (!table) {
-			const tableOptions: TableOptions = {
-				name: tableName,
-				columns: [
-					{
-						name: 'event_data_id',
-						type: 'integer',
-						isPrimary: true,
-						isGenerated: true,
-						generationStrategy: "increment"
-					},{
-						name: 'event_id',
-						type: 'integer',
-					}, {
-						name: 'contract_id',
-						type: 'integer',
-					}, {
-						name: 'mh_key',
-						type: 'text',
-					},
-				]
-			};
+			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 
-			data.forEach((line) => {
-				tableOptions.columns.push({
-					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
-					isNullable: true,
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (!table) {
+				const tableOptions: TableOptions = {
+					name: tableName,
+					columns: [
+						{
+							name: 'event_data_id',
+							type: 'integer',
+							isPrimary: true,
+							isGenerated: true,
+							generationStrategy: "increment"
+						},{
+							name: 'event_id',
+							type: 'integer',
+						}, {
+							name: 'contract_id',
+							type: 'integer',
+						}, {
+							name: 'mh_key',
+							type: 'text',
+						},
+					]
+				};
+
+				data.forEach((line) => {
+					tableOptions.columns.push({
+						name: `data_${line.name.toLowerCase().trim()}`,
+						type: this._getPgType(line.internalType),
+						isNullable: true,
+					});
 				});
-			});
 
-			await queryRunner.createTable(new Table(tableOptions), true);
-		}
+				await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			}
 
-		const sql = `INSERT INTO ${tableName}
+			const sql = `INSERT INTO ${tableName}
 (event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 VALUES
 (${eventId}, ${contractId}, '${mhKey}', '${data.map((line) => line.value.toString().replace(/\0/g, '')).join('\',\'')}');`;
 
-		console.log(sql);
+			console.log(sql);
 
-		const [err] = await to(queryRunner.query(sql));
-		if (err) {
-			console.log(err);	
-		}
+			const [err] = await to(entityManager.queryRunner.query(sql));
+			if (err) {
+				// TODO: throw err
+				console.log(err);	
+			}
+
+			// await progressRepository.add(contractId, eventId, );
+		});
 	}
 
 	private _getPgType(abiType: string): string {

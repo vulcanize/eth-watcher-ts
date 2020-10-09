@@ -117,7 +117,8 @@ export default class App {
 
 
 					if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
-						console.log('Bingo!');
+						const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
+						console.log('Bingo!', index);
 
 						if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
 							const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
@@ -127,16 +128,16 @@ export default class App {
 							// console.log(decoded[1].toString('hex'));
 							// console.log(decoded[2].toString('hex'));
 
-							const addressFromBlock = decoded[3][0][0].toString('hex');
+							const addressFromBlock = decoded[3][index][0].toString('hex');
 							console.log('address', addressFromBlock);
 
-							const hashFromBlock = decoded[3][0][1][0].toString('hex');
+							const hashFromBlock = decoded[3][index][1][0].toString('hex');
 							console.log(hashFromBlock);
 
 							const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 							const indexedEvents = event.inputs.filter(input => input.indexed);
 
-							const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][0][2]);
+							const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
 
 							const array = [];
 							indexedEvents.forEach((event, index) => {
