@@ -2,6 +2,10 @@
 import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import * as abi from 'ethereumjs-abi';
+import { keccak256, rlp } from 'ethereumjs-util'
+import Store from '../store';
+import Event from '../models/contract/event';
 import ProgressRepository from '../repositories/data/progressRepository';
 
 export default class DataService {
@@ -101,6 +105,92 @@ VALUES
 		}
 
 		return pgType;
+	}
+
+	public async processEvent(relatedNode): Promise<void> {
+
+		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
+			// TODO: mark as done?
+			return;
+		}
+
+		const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
+		if (!target) {
+			return;
+		}
+
+		const events: Event[] = Store.getStore().getEvents();
+		for (const e of events) {
+			const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
+			const event = contractAbi.find((a) => a.name === e.name);
+
+			if (!event) {
+				continue;
+			}
+
+			const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
+			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+
+			console.log('payload', payload);
+			console.log('hash', hash);
+
+
+			if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
+				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
+
+				if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
+					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
+					const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+					// console.log(decoded[0].toString('hex'));
+					// console.log(decoded[1].toString('hex'));
+					// console.log(decoded[2].toString('hex'));
+
+					const addressFromBlock = decoded[3][index][0].toString('hex');
+					console.log('address', addressFromBlock);
+
+					const hashFromBlock = decoded[3][index][1][0].toString('hex');
+					console.log(hashFromBlock);
+
+					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
+					const indexedEvents = event.inputs.filter(input => input.indexed);
+
+					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
+
+					const array = [];
+					indexedEvents.forEach((event, index) => {
+						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
+
+						try {
+							array.push({
+								name: event.name,
+								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
+								internalType: event.internalType,
+							});
+						} catch (e) {
+							console.log('Error wtih', event.name, event.internalType, e.message);
+						}
+					});
+			
+					notIndexedEvents.forEach((event, index) => {
+						array.push({
+							name: event.name,
+							value: messages[index],
+							internalType: event.internalType,
+						});
+					});
+
+					await this.addEvent(
+						e.eventId,
+						target.contractId,
+						array,
+						relatedNode.mhKey,
+						relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+					);
+					console.log('Event saved');
+				}
+			}
+		}
 	}
 
 }

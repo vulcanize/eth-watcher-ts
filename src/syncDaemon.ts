@@ -9,6 +9,7 @@ import Contract from './models/contract/contract';
 import Event from './models/contract/event';
 import Store from './store';
 import GraphqlClient from './graphqlClient';
+import DataService from './services/dataService';
 
 
 process.on('unhandledRejection', (reason, p) => {
@@ -22,6 +23,7 @@ console.log('Cron daemon is started');
 	createConnection(connectionOptions).then(async () => {
 
 		const graphqlClient = new GraphqlClient();
+		const dataService = new DataService();
 
 		let status = 'waiting';
 		cron.schedule('0 * * * * *', async () => { // every minute
@@ -52,7 +54,7 @@ console.log('Cron daemon is started');
 				for (const event of events) {
 					console.log('Contract', contract.contractId, 'Event', event.name);
 					
-					const startingBlock = 100//contract.startingBlock;
+					const startingBlock = 110; //contract.startingBlock;
 					const currentBlock = 120; // TODO: use real current block
 
 					const progresses = await progressRepository.findAllSyncedBlocks(contract.contractId, event.eventId);
@@ -64,10 +66,15 @@ console.log('Cron daemon is started');
 					
 					for (const blockNumber of notSyncedBlocks) {
 						const header = await headerRepository.findByBlockNumber(blockNumber);
+						if (!header) {
+							// TODO: mark as done?
+							continue;
+						}
+
 						for (const tx of header.transactions) {
 							const data = await graphqlClient.query(`
 								query MyQuery {
-									receiptCidByTxId(txId: 127) {
+									receiptCidByTxId(txId: ${tx.id}) {
 										id
 										mhKey
 										logContracts
@@ -91,8 +98,7 @@ console.log('Cron daemon is started');
 								}
 							`);
 
-							// TODO: save data
-							console.log('tx', tx.id, data);
+							await dataService.processEvent(data.receiptCidByTxId);
 						}
 					}
 				}
