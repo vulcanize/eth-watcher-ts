@@ -26,14 +26,16 @@ export default class Store {
 		}
 
 		return Store.store;
-    }
-    
-    public static init(): void {
-        const store = this.getStore();
+	}
+	
+	public static init(autoUpdate = true): void {
+		const store = this.getStore();
 
-        Store.store.syncData();
-        setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
-    }
+		Store.store.syncData();
+		if (autoUpdate) {
+			setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
+		}
+	}
 
 	public getContracts(): Contract[] {
 		return this.contracts;

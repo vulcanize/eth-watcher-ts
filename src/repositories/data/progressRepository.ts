@@ -25,4 +25,17 @@ export default class ProgressRepository extends Repository<Progress> {
 
 		return false;
 	}
+
+	public async findAllSyncedBlocks(contractId: number, eventId: number): Promise<Progress[]> {
+		const items = await this.find({
+			contractId,
+			eventId,
+		});
+
+		if (!items || items.length === 0) {
+			return [];
+		}
+
+		return items;
+	}
 }
