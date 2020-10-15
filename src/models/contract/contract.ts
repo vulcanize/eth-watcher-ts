@@ -23,5 +23,5 @@ export default class Contract {
 	methods: number[] | null;
 
 	@Column("integer", { name: "starting_block" })
-	startingBlock: number
+	startingBlock: number;
 }

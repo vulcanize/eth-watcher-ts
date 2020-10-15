@@ -26,16 +26,27 @@ export default class ProgressRepository extends Repository<Progress> {
 		return false;
 	}
 
-	public async findAllSyncedBlocks(contractId: number, eventId: number): Promise<Progress[]> {
-		const items = await this.find({
-			contractId,
-			eventId,
-		});
+	public async findSyncedBlocks(contractId: number, eventId: number, offset = 0, limit = 1000): Promise<Progress[]> {
+		const query = this.createQueryBuilder('progress')
+			.where(`contract_id=${contractId}`)
+			.andWhere(`event_id=${eventId}`)
+			.orderBy({
+				'progress.progress_id': 'ASC',
+			})
+			.take(limit)
+			.offset(offset);
 
-		if (!items || items.length === 0) {
-			return [];
-		}
+		return query.getMany();
+	}
 
-		return items;
+	public async getMaxBlockNumber(contractId: number, eventId: number): Promise<number> {
+		const query = this.createQueryBuilder('progress')
+			.where(`contract_id=${contractId}`)
+			.andWhere(`event_id=${eventId}`)
+			.select("MAX(progress.block_number)", "max");
+
+		const result = await query.getRawOne();
+
+		return result?.max || 0;
 	}
 }

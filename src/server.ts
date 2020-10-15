@@ -4,6 +4,7 @@ import { createConnection, getConnectionOptions } from 'typeorm';
 
 import App from './app';
 import env from './env';
+import GraphqlService from './services/graphqlService';
 
 const PORT = env.APP_PORT;
 
@@ -14,7 +15,8 @@ const PORT = env.APP_PORT;
 
 		Store.init();
 
-		app.subscribeToGraphql(); // async
+		const graphqlService = new GraphqlService();
+		graphqlService.subscriptionReceiptCids(); // async
 
 		createServer(app.app).listen(PORT, () =>
 			console.info(`Server running on port ${PORT}`)

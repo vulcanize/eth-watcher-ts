@@ -4,13 +4,13 @@ dotenv.config();
 import * as cron from 'node-cron';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
-import HeaderRepository from './repositories/eth/headerRepository';
 import Contract from './models/contract/contract';
 import Event from './models/contract/event';
 import Store from './store';
-import GraphqlClient from './graphqlClient';
 import DataService from './services/dataService';
+import GraphqlService from './services/graphqlService';
 
+const LIMIT = 1000;
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);
@@ -22,8 +22,8 @@ console.log('Cron daemon is started');
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
 
-		const graphqlClient = new GraphqlClient();
 		const dataService = new DataService();
+		const graphqlService = new GraphqlService();
 
 		let status = 'waiting';
 		cron.schedule('0 * * * * *', async () => { // every minute
@@ -43,62 +43,41 @@ console.log('Cron daemon is started');
 
 			console.log('Contracts', contracts.length);
 			console.log('events', events.length);
-			
 
 			const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
-			const headerRepository: HeaderRepository = getConnection().getCustomRepository(HeaderRepository);
-
-			// console.log('Start for', progress ? progress.length : 0);
 
 			for (const contract of contracts) {
 				for (const event of events) {
 					console.log('Contract', contract.contractId, 'Event', event.name);
 					
-					const startingBlock = 110; //contract.startingBlock;
-					const currentBlock = 120; // TODO: use real current block
+					const startingBlock = contract.startingBlock;
+					const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
+					const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
 
-					const progresses = await progressRepository.findAllSyncedBlocks(contract.contractId, event.eventId);
+					// TODO: add unit test
+					for (let page = 1; page <= maxPage; page++) {
+						const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * LIMIT, LIMIT);
 
-					const allBlocks = Array.from({ length: currentBlock - startingBlock }, (_, i) => i + startingBlock);
-					const syncedBlocks = progresses.map((p) => p.blockNumber);
+						const max = Math.min(maxBlock, page * LIMIT); // max block for current page
+						const start = startingBlock + (page -1) * LIMIT; // start block for current page
 
-					const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
-					
-					for (const blockNumber of notSyncedBlocks) {
-						const header = await headerRepository.findByBlockNumber(blockNumber);
-						if (!header) {
-							// TODO: mark as done?
-							continue;
-						}
+						const allBlocks = Array.from({ length:  max - start }, (_, i) => i + start);
+						const syncedBlocks = progresses.map((p) => p.blockNumber);
+						const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
 
-						for (const tx of header.transactions) {
-							const data = await graphqlClient.query(`
-								query MyQuery {
-									receiptCidByTxId(txId: ${tx.id}) {
-										id
-										mhKey
-										logContracts
-										nodeId
-										topic0S
-										topic1S
-										topic2S
-										topic3S
-										txId
-										cid
-										contract
-										blockByMhKey {
-											data
-										}
-										ethTransactionCidByTxId {
-											ethHeaderCidByHeaderId {
-												blockNumber
-											}
-										}
-									}
+						for (const blockNumber of notSyncedBlocks) {
+							const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
+	
+							if (!header) {
+								console.warn(`No header for ${blockNumber} block`);
+								continue;
+							}
+
+							for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
+								for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
+									await dataService.processEvent(tx.receiptCidByTxId);
 								}
-							`);
-
-							await dataService.processEvent(data.receiptCidByTxId);
+							}
 						}
 					}
 				}

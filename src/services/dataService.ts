@@ -134,7 +134,6 @@ VALUES
 			console.log('payload', payload);
 			console.log('hash', hash);
 
-
 			if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
 				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
 
