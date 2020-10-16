@@ -231,13 +231,14 @@ VALUES
 		startingBlock: number,
 		maxBlock: number,
 		page: number,
+		limit: number = LIMIT,
 	): Promise<number[]> {
-		const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * LIMIT, LIMIT);
+		const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * limit, limit);
 
-		const max = Math.min(maxBlock, page * LIMIT); // max block for current page
-		const start = startingBlock + (page -1) * LIMIT; // start block for current page
+		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const start = startingBlock + (page -1) * limit; // start block for current page
 
-		const allBlocks = Array.from({ length: max - start }, (_, i) => i + start);
+		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
 		const syncedBlocks = progresses.map((p) => p.blockNumber);
 		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
 

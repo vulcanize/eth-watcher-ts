@@ -4,77 +4,84 @@
 import DataService from '../src/services/dataService';
 import Event from '../src/models/contract/event';
 import Contract from '../src/models/contract/contract';
-// import GraphqlService from '../src/services/graphqlService';
-// import ProgressRepository from '../src/repositories/data/progressRepository';
 
-jest.mock("typeorm");
-
-
-const mockEvent1 = new Event();
-mockEvent1.eventId = 1;
-mockEvent1.name = 'TestEvent1';
-
+const mockEvent1 = { eventId: 1, name: 'TestEvent1' } as Event;
 const mockContract1 = { contractId: 1, name: 'Contract1', startingBlock: 0 } as Contract;
 
 const mockGraphqlService = {
-
+	ethHeaderCidByBlockNumber: () => ({
+		ethHeaderCidByBlockNumber: {
+			nodes: [{
+			ethTransactionCidsByHeaderId: {
+				nodes: [{
+				id: 1,
+				}]
+			}
+			}]
+		}
+	}),
 } as any;
 
 const mockDataService = {
-  processEvent: (a) => Promise.resolve(console.log(a)),
+	processEvent: () => Promise.resolve(),
 } as any;
 
-jest.mock('typeorm', () => ({
-  Index: () => jest.fn(),
-	Entity: () => jest.fn(),
-	Column: () => jest.fn(),
-	OneToOne: () => jest.fn(),
-  JoinColumn: () => jest.fn(),
-	PrimaryGeneratedColumn: () => jest.fn(),
-	createConnection: jest.fn(() => Promise.resolve({
-		close: jest.fn().mockReturnValue(Promise.resolve()),
-		getRepository: jest.fn(() => Promise.resolve({
-			// find: jest.fn(() => Promise.resolve(events)),
-			// findOneOrFail: jest.fn((id: number) => Promise.resolve(mockEvent1)),
-			save: jest.fn().mockReturnValue(Promise.resolve()),
-			remove: jest.fn().mockReturnValue(Promise.resolve())
-		})),
-	})),
-	Connection: jest.fn(() =>
-		Promise.resolve({
-			getRepository: jest.fn().mockReturnValue(
-				Promise.resolve({
-					// find: jest.fn(() => Promise.resolve(events)),
-					// findOneOrFail: jest.fn((id: number) => Promise.resolve(mockEvent1)),
-					save: jest.fn().mockReturnValue(Promise.resolve()),
-					remove: jest.fn().mockReturnValue(Promise.resolve())
-				})
-			),
-			close: jest.fn().mockReturnValue(Promise.resolve())
-		})
-	),
-	getRepository: jest.fn().mockReturnValue(
-		Promise.resolve({
-			// find: jest.fn(() => Promise.resolve(events)),
-			// findOneOrFail: jest.fn((id: number) => Promise.resolve(mockEvent1)),
-			save: jest.fn().mockReturnValue(Promise.resolve()),
-			remove: jest.fn().mockReturnValue(Promise.resolve())
-		})
-	)
-}));
+test('syncEventForContractPage Test Full', async () => {
 
+	const mockProgressRepository = {
+		findSyncedBlocks: jest.fn().mockResolvedValueOnce([2,3,4,5].map((blockNumber) => ({ blockNumber })))
+	} as any;
 
-test('syncEventForContractPage Test 1', async () => {
+	const startBlock = 0;
+	const maxBlock = 9;
+	const limit = 10;
+	const page = 1;
 
-	const mockProgressRepository = { findSyncedBlocks: jest.fn().mockResolvedValueOnce([1,2,3,4,5]) } as any;
-
-	const res = await DataService._syncEventForContractPage({
+	const blocks = await DataService._syncEventForContractPage({
 		graphqlService: mockGraphqlService,
 		dataService: mockDataService,
 		progressRepository: mockProgressRepository, 
-	}, mockEvent1, mockContract1, 0, 100, 1);
+	}, mockEvent1, mockContract1, startBlock, maxBlock, page, limit);
 
-  console.log(res);
-  // TODO: Do a real test
-	expect(1 + 2).toBe(3);
+	expect(blocks).toEqual([0,1,6,7,8,9]);
+});
+
+test('syncEventForContractPage Test without synced blocks', async () => {
+
+	const mockProgressRepository = {
+		findSyncedBlocks: jest.fn().mockResolvedValueOnce([])
+	} as any;
+
+	const startBlock = 0;
+	const maxBlock = 9;
+	const limit = 10;
+	const page = 1;
+
+	const blocks = await DataService._syncEventForContractPage({
+		graphqlService: mockGraphqlService,
+		dataService: mockDataService,
+		progressRepository: mockProgressRepository, 
+	}, mockEvent1, mockContract1, startBlock, maxBlock, page, limit);
+
+	expect(blocks).toEqual([0,1,2,3,4,5,6,7,8,9]);
+});
+
+test('syncEventForContractPage Test with all synced blocks', async () => {
+
+	const mockProgressRepository = {
+		findSyncedBlocks: jest.fn().mockResolvedValueOnce([0,1,2].map((blockNumber) => ({ blockNumber })))
+	} as any;
+
+	const startBlock = 0;
+	const maxBlock = 2;
+	const limit = 10;
+	const page = 1;
+
+	const blocks = await DataService._syncEventForContractPage({
+		graphqlService: mockGraphqlService,
+		dataService: mockDataService,
+		progressRepository: mockProgressRepository, 
+	}, mockEvent1, mockContract1, startBlock, maxBlock, page, limit);
+
+	expect(blocks).toEqual([]);
 });
