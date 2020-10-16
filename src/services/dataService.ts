@@ -6,7 +6,11 @@ import * as abi from 'ethereumjs-abi';
 import { keccak256, rlp } from 'ethereumjs-util'
 import Store from '../store';
 import Event from '../models/contract/event';
+import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
+import GraphqlService from './graphqlService';
+
+const LIMIT = 1000;
 
 export default class DataService {
 
@@ -190,6 +194,69 @@ VALUES
 				}
 			}
 		}
+	}
+
+	public static async syncEventForContract({
+		graphqlService, progressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
+		event: Event,
+		contract: Contract,
+	): Promise<void> {
+		const startingBlock = contract.startingBlock;
+		const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
+		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+
+		for (let page = 1; page <= maxPage; page++) {
+			await DataService._syncEventForContractPage(
+				{
+					graphqlService,
+					progressRepository,
+					dataService
+				},
+				event,
+				contract,
+				startingBlock,
+				maxBlock,
+				page,
+			)
+		}
+	}
+
+	// TODO: move to private
+	public static async _syncEventForContractPage({
+		graphqlService, progressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
+		event: Event,
+		contract: Contract,
+		startingBlock: number,
+		maxBlock: number,
+		page: number,
+	): Promise<number[]> {
+		const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * LIMIT, LIMIT);
+
+		const max = Math.min(maxBlock, page * LIMIT); // max block for current page
+		const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+		const allBlocks = Array.from({ length: max - start }, (_, i) => i + start);
+		const syncedBlocks = progresses.map((p) => p.blockNumber);
+		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
+
+		for (const blockNumber of notSyncedBlocks) {
+			const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
+
+			if (!header) {
+				console.warn(`No header for ${blockNumber} block`);
+				continue;
+			}
+
+			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
+				for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
+					await dataService.processEvent(tx.receiptCidByTxId);
+				}
+			}
+		}
+
+		return notSyncedBlocks;
 	}
 
 }

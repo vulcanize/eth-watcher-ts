@@ -10,8 +10,6 @@ import Store from './store';
 import DataService from './services/dataService';
 import GraphqlService from './services/graphqlService';
 
-const LIMIT = 1000;
-
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);
 	// TODO: send to log system
@@ -45,41 +43,11 @@ console.log('Cron daemon is started');
 			console.log('events', events.length);
 
 			const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
-
 			for (const contract of contracts) {
 				for (const event of events) {
 					console.log('Contract', contract.contractId, 'Event', event.name);
-					
-					const startingBlock = contract.startingBlock;
-					const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
-					const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
 
-					// TODO: add unit test
-					for (let page = 1; page <= maxPage; page++) {
-						const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * LIMIT, LIMIT);
-
-						const max = Math.min(maxBlock, page * LIMIT); // max block for current page
-						const start = startingBlock + (page -1) * LIMIT; // start block for current page
-
-						const allBlocks = Array.from({ length:  max - start }, (_, i) => i + start);
-						const syncedBlocks = progresses.map((p) => p.blockNumber);
-						const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
-
-						for (const blockNumber of notSyncedBlocks) {
-							const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
-	
-							if (!header) {
-								console.warn(`No header for ${blockNumber} block`);
-								continue;
-							}
-
-							for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
-								for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
-									await dataService.processEvent(tx.receiptCidByTxId);
-								}
-							}
-						}
-					}
+					await DataService.syncEventForContract({ graphqlService, dataService, progressRepository }, event, contract);
 				}
 			}
 
