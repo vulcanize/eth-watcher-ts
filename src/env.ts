@@ -48,6 +48,14 @@ export default envalid.cleanEnv(
 		GRAPHQL_URI: envalid.url({
 			default: tomlConfig?.graphql?.uri
 		}),
+
+		ENABLE_EVENT_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.event
+		}),
+		ENABLE_HEADER_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.header
+		}),
+
 	},
 	{ strict: true }
 );

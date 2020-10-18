@@ -16,7 +16,13 @@ const PORT = env.APP_PORT;
 		Store.init();
 
 		const graphqlService = new GraphqlService();
-		graphqlService.subscriptionReceiptCids(); // async
+
+		if (env.ENABLE_EVENT_WATCHER) {
+			graphqlService.subscriptionReceiptCids(); // async
+		}
+		if (env.ENABLE_HEADER_WATCHER) {
+			graphqlService.subscriptionHeaderCids(); // async
+		}
 
 		createServer(app.app).listen(PORT, () =>
 			console.info(`Server running on port ${PORT}`)

@@ -86,4 +86,30 @@ export default class GraphqlRepository {
 			}
 		`, onNext);
 	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public subscriptionHeaderCids(onNext: (value: any) => void): Promise<void> {
+		return this.graphqlClient.subscribe(`
+			subscription MySubscription {
+				listen(topic: "header_cids") {
+					relatedNode {
+					... on EthHeaderCid {
+						id
+						td
+						blockHash
+						blockNumber
+						bloom
+						cid
+						mhKey
+						nodeId
+						blockByMhKey {
+							data
+						}
+					}
+					}
+				}
+			}
+		`, onNext);
+	}
 }
+

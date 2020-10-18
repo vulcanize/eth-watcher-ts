@@ -260,4 +260,24 @@ VALUES
 		return notSyncedBlocks;
 	}
 
+	public async processHeader(relatedNode): Promise<void> {
+
+		if (!relatedNode) {
+			return;
+		}
+
+		console.log('New header', relatedNode);
+
+		if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
+			const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
+			const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+			console.log(decoded);
+
+			console.log(decoded[0].toString('hex'));
+			console.log(decoded[1].toString('hex'));
+			console.log(decoded[2].toString('hex'));
+		}
+	}
+
 }
