@@ -22,6 +22,9 @@ export default envalid.cleanEnv(
 			default: tomlConfig?.app?.port || 3000,
 			desc: 'The port to start the server on'
 		}),
+		CONFIG_RELOAD_INTERVAL: envalid.num({
+			default: 5000
+		}),
 
 		DATABASE_HOSTNAME: envalid.host({
 			default: tomlConfig?.database?.hostname
@@ -45,6 +48,14 @@ export default envalid.cleanEnv(
 		GRAPHQL_URI: envalid.url({
 			default: tomlConfig?.graphql?.uri
 		}),
+
+		ENABLE_EVENT_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.event
+		}),
+		ENABLE_HEADER_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.header
+		}),
+
 	},
 	{ strict: true }
 );

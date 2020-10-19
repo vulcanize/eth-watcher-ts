@@ -10,3 +10,7 @@
 
 [graphql]
     uri = "http://localhost:5000"
+
+[watcher]
+    event = true
+    header =true

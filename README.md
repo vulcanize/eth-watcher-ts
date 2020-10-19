@@ -53,5 +53,5 @@ ts-node ./node_modules/typeorm/cli.js migration:generate -n Name
 Generates models for TypeORM from existing databases
 
 ```bash
-npx typeorm-model-generator -h localhost -d postgres -u postgres -x !Passw0rd -e postgres -o . -s public --ssl
+npx typeorm-model-generator -h localhost -p 8069 -d vulcanize_public -u user -x password -e postgres -o ./src -s contract --ssl
 ```

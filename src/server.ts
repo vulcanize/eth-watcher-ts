@@ -1,15 +1,30 @@
 import { createServer } from 'http';
+import Store from './store';
 import { createConnection, getConnectionOptions } from 'typeorm';
 
-import app from './app';
+import App from './app';
 import env from './env';
+import GraphqlService from './services/graphqlService';
 
 const PORT = env.APP_PORT;
 
 (async (): Promise<void> => {
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
-		createServer(app).listen(PORT, () =>
+		const app = new App();
+
+		Store.init();
+
+		const graphqlService = new GraphqlService();
+
+		if (env.ENABLE_EVENT_WATCHER) {
+			graphqlService.subscriptionReceiptCids(); // async
+		}
+		if (env.ENABLE_HEADER_WATCHER) {
+			graphqlService.subscriptionHeaderCids(); // async
+		}
+
+		createServer(app.app).listen(PORT, () =>
 			console.info(`Server running on port ${PORT}`)
 		);
 	}).catch((error) => console.log('Error: ', error));
