@@ -22,6 +22,11 @@ export default envalid.cleanEnv(
 			default: tomlConfig?.app?.port || 3000,
 			desc: 'The port to start the server on'
 		}),
+		SERVER_PORT: envalid.port({
+			default: tomlConfig?.server?.port || 5000,
+			desc: 'The port to start the postgraphile server on'
+		}),
+
 		CONFIG_RELOAD_INTERVAL: envalid.num({
 			default: 5000
 		}),
