@@ -9,7 +9,10 @@ const SERVER_PORT = env.SERVER_PORT;
 	createServer(
 		postgraphile(
 			`postgres://${env.DATABASE_USER}:${env.DATABASE_PASSWORD}@${env.DATABASE_HOSTNAME}:${env.DATABASE_PORT}/${env.DATABASE_NAME}`,
-			'contract',
+			[
+				'contract',
+				'data',
+			],
 			{
 				watchPg: true,
 				graphiql: true,
