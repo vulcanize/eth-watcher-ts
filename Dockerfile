@@ -14,7 +14,7 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+RUN npm config set unsafe-perm true && npm run build
 
 EXPOSE 3000
 
