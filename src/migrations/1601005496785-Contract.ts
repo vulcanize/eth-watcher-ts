@@ -17,12 +17,12 @@ export class Contract1601005496785 implements MigrationInterface {
 				methods integer[],
 				starting_block integer not null
 			);
-			comment on column contracts.contract_id is 'PK';
-			comment on column contracts.name is 'Contract name';
-			comment on column contracts.address is 'Contract address';
-			comment on column contracts.abi is 'Contract ABI';
-			comment on column contracts.events is 'List of Event ID';
-			comment on column contracts.methods is 'List of Method ID';
+			comment on column contract.contracts.contract_id is 'PK';
+			comment on column contract.contracts.name is 'Contract name';
+			comment on column contract.contracts.address is 'Contract address';
+			comment on column contract.contracts.abi is 'Contract ABI';
+			comment on column contract.contracts.events is 'List of Event ID';
+			comment on column contract.contracts.methods is 'List of Method ID';
 			create table if not exists contract.events
 			(
 				event_id serial not null
@@ -30,7 +30,7 @@ export class Contract1601005496785 implements MigrationInterface {
 						primary key,
 				name varchar not null
 			);
-			comment on column events.name is 'Event name';
+			comment on column contract.events.name is 'Event name';
 			create table if not exists contract.methods
 			(
 				method_id serial not null
@@ -38,10 +38,9 @@ export class Contract1601005496785 implements MigrationInterface {
 						primary key,
 				name varchar not null
 			);
-			comment on column methods.method_id is 'PK';
-			comment on column methods.name is 'Method name';
+			comment on column contract.methods.method_id is 'PK';
+			comment on column contract.methods.name is 'Method name';
 		`);
-		
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
