@@ -276,4 +276,52 @@ VALUES
 		});
 	}
 
+	public static async syncHeaders({
+		graphqlService, headerRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository }
+	): Promise<void> {
+		const startingHeaderId = 1;
+		const maxHeaderId = await headerRepository.getMaxHeaderId();
+		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
+
+		for (let page = 1; page <= maxPage; page++) {
+			await DataService._syncHeadersByPage(
+				{
+					graphqlService,
+					headerRepository,
+					dataService
+				},
+				startingHeaderId,
+				maxHeaderId,
+				page,
+			)
+		}
+	}
+
+	protected static async _syncHeadersByPage({
+		graphqlService, headerRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository },
+		startingHeaderId: number,
+		maxHeaderId: number,
+		page: number,
+		limit: number = LIMIT,
+	): Promise<number[]> {
+		const syncedHeaders = await headerRepository.findSyncedHeaders((page - 1) * limit, limit);
+
+		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
+		const start = startingHeaderId + (page -1) * limit; // start header id for current page
+
+		const allHeaderIds = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedIds= syncedHeaders.map((p) => p.id);
+		const notSyncedIds = allHeaderIds.filter(x => !syncedIds.includes(x));
+
+		for (const headerId of notSyncedIds) {
+			const header = await graphqlService.ethHeaderCidById(headerId);
+			await dataService.processHeader(header.ethHeaderCidById);
+			
+		}
+
+		return notSyncedIds;
+	}
+
 }

@@ -9,6 +9,12 @@ export default class GraphqlService {
 		return graphqlRepository.ethHeaderCidByBlockNumber(blockNumber);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async ethHeaderCidById(headerId: number): Promise<any> {
+		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
+		return graphqlRepository.ethHeaderCidById(headerId);
+	}
+
 	public async subscriptionReceiptCids(): Promise<void> {
 		const dataService = new DataService();
 

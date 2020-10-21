@@ -54,6 +54,32 @@ export default class GraphqlRepository {
 		`);
 	}
 
+	public ethHeaderCidById(headerId: number): Promise<unknown> {
+		return this.graphqlClient.query(`
+			query MyQuery {
+				ethHeaderCidById(id: ${headerId}) {
+					id
+					td
+					blockHash
+					blockNumber
+					bloom
+					cid
+					mhKey
+					nodeId
+					ethNodeId
+					parentHash
+					receiptRoot
+					reward
+					timesValidated
+					timestamp
+					txRoot
+					uncleRoot
+					stateRoot
+				}
+			}
+		`);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public subscriptionReceiptCids(onNext: (value: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`

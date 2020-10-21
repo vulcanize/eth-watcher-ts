@@ -42,4 +42,26 @@ export default class HeaderRepository extends Repository<Header> {
 			timestamp,
 		});
 	}
+
+	public async findSyncedHeaders(offset = 0, limit = 1000): Promise<Header[]> {
+		const query = this.createQueryBuilder('header')
+			.orderBy({
+				'header.id': 'ASC',
+			})
+			.take(limit)
+			.offset(offset);
+
+		return query.getMany();
+	}
+
+
+	public async getMaxHeaderId(): Promise<number> {
+		const query = this.createQueryBuilder('header')
+			.select("MAX(header.id)", "max");
+
+		const result = await query.getRawOne();
+
+		return result?.max || 0;
+	}
+
 }
