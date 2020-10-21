@@ -9,6 +9,8 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
+import HeaderRepository from '../repositories/data/headerRepository';
+import Header from '../models/data/header';
 
 const LIMIT = 1000;
 
@@ -260,24 +262,18 @@ VALUES
 		return notSyncedBlocks;
 	}
 
-	public async processHeader(relatedNode): Promise<void> {
+	public async processHeader(relatedNode: { id; td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<Header> {
 
 		if (!relatedNode) {
 			return;
 		}
 
-		console.log('New header', relatedNode);
+		return getConnection().transaction(async (entityManager) => {
+			const headerRepository: HeaderRepository = entityManager.getCustomRepository(HeaderRepository);
+			const header = await headerRepository.add(relatedNode.id, relatedNode);
 
-		if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-			const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
-			const decoded: any = rlp.decode(buffer); // eslint-disable-line
-
-			console.log(decoded);
-
-			console.log(decoded[0].toString('hex'));
-			console.log(decoded[1].toString('hex'));
-			console.log(decoded[2].toString('hex'));
-		}
+			return header;
+		});
 	}
 
 }

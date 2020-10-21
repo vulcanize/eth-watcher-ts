@@ -102,9 +102,15 @@ export default class GraphqlRepository {
 						cid
 						mhKey
 						nodeId
-						blockByMhKey {
-							data
-						}
+						ethNodeId
+						parentHash
+						receiptRoot
+						reward
+						timesValidated
+						timestamp
+						txRoot
+						uncleRoot
+						stateRoot
 					}
 					}
 				}
