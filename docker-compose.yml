@@ -1,0 +1,70 @@
+version: '3.2'
+
+services:
+  dapptools:
+    restart: unless-stopped
+    image: vulcanize/dapptools:v0.29.0-statediff-0.0.2
+    ports:
+      - "127.0.0.1:8545:8545"
+      - "127.0.0.1:8546:8546"
+
+  eth-indexer:
+    restart: unless-stopped
+    depends_on:
+      - indexer-db
+      - dapptools
+    image: vulcanize/ipld-eth-indexer:v0.3.0-alpha
+    environment:
+      DATABASE_NAME: vulcanize_public
+      DATABASE_HOSTNAME: indexer-db
+      DATABASE_PORT: 5432
+      DATABASE_USER: vdbm
+      DATABASE_PASSWORD: password
+      ETH_WS_PATH: "dapptools:8546"
+      ETH_HTTP_PATH: "dapptools:8545"
+      ETH_CHAIN_ID: 4
+      ETH_NETWORK_ID: 4
+      VDB_COMMAND: sync
+
+  indexer-db:
+    restart: unless-stopped
+    image: postgres:10.12-alpine
+    environment:
+      - POSTGRES_USER=vdbm
+      - POSTGRES_DB=vulcanize_public
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - indexer_db_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:8069:5432"
+
+  indexer-graphql:
+    restart: unless-stopped
+    depends_on:
+      - indexer-db
+    image: vulcanize/postgraphile:v1.0.1
+    environment:
+      - PG_HOST=indexer-db
+      - PG_PORT=5432
+      - PG_DATABASE=vulcanize_public
+      - PG_USER=vdbm
+      - PG_PASSWORD=password
+      - SCHEMA=public,eth
+    ports:
+      - "127.0.0.1:5000:5000"
+
+  contact-watcher-db:
+    restart: unless-stopped
+    image: postgres:10.12-alpine
+    environment:
+      POSTGRES_USER: "vdbm"
+      POSTGRES_DB: "vulcanize_public"
+      POSTGRES_PASSWORD: "password"
+    volumes:
+     - contract_watcher_js_db_data:/var/lib/postgresql/data
+    ports:
+     - "127.0.0.1:8070:5432"
+
+volumes:
+  contract_watcher_js_db_data:
+  indexer_db_data:
