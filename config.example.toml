@@ -1,5 +1,12 @@
-[app]
+[http]
+    enable = true
     port = 3000
+    addr = "127.0.0.1"
+
+[graphql-server]
+    enable = true
+    port = 5000
+    addr = "127.0.0.1"
 
 [database]
     name     = "vulcanize"

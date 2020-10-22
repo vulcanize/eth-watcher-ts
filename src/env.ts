@@ -11,17 +11,36 @@ try {
 		tomlConfig = TOML.parse(tomlFile);
 	}
 } catch (e) {
-	// do nothing
+	console.warn(e);
 }
 
 // Validator types https://github.com/af/envalid#validator-types
 export default envalid.cleanEnv(
 	process.env,
 	{
-		APP_PORT: envalid.port({
-			default: tomlConfig?.app?.port || 3000,
+
+		HTTP_ENABLE: envalid.bool({
+			default: tomlConfig ? tomlConfig?.http?.enable : true,
+		}),
+		HTTP_PORT: envalid.port({
+			default: tomlConfig?.http?.port || 3000,
 			desc: 'The port to start the server on'
 		}),
+		HTTP_ADDR: envalid.host({
+			default: tomlConfig?.http?.addr || '127.0.0.1',
+		}),
+
+		GRAPHQL_SERVER_ENABLE: envalid.bool({
+			default: tomlConfig ? tomlConfig['graphql-server']?.enable : true,
+		}),
+		GRAPHQL_SERVER_PORT: envalid.port({
+			default: tomlConfig ? tomlConfig['graphql-server']?.port || 5000 : 5000,
+			desc: 'The port to start the postgraphile server on'
+		}),
+		GRAPHQL_SERVER_ADDR: envalid.host({
+			default: tomlConfig ? tomlConfig['graphql-server']?.addr || '127.0.0.1' : '127.0.0.1',
+		}),
+
 		CONFIG_RELOAD_INTERVAL: envalid.num({
 			default: 5000
 		}),
