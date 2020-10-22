@@ -24,6 +24,12 @@ export default class GraphqlClient {
 			fetch,
 		});
 
+		subscriptionClient.onError((err: ErrorEvent) => {
+			if (err?.error?.code === 'ENOTFOUND') {
+				throw err;
+			}
+		});
+
 		const link = split(
 			({ query }) => {
 				const definition = getMainDefinition(query);
