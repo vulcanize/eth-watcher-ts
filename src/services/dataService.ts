@@ -9,6 +9,8 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
+import HeaderRepository from '../repositories/data/headerRepository';
+import Header from '../models/data/header';
 
 const LIMIT = 1000;
 
@@ -260,24 +262,66 @@ VALUES
 		return notSyncedBlocks;
 	}
 
-	public async processHeader(relatedNode): Promise<void> {
+	public async processHeader(relatedNode: { id; td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<Header> {
 
 		if (!relatedNode) {
 			return;
 		}
 
-		console.log('New header', relatedNode);
+		return getConnection().transaction(async (entityManager) => {
+			const headerRepository: HeaderRepository = entityManager.getCustomRepository(HeaderRepository);
+			const header = await headerRepository.add(relatedNode.id, relatedNode);
 
-		if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-			const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
-			const decoded: any = rlp.decode(buffer); // eslint-disable-line
+			return header;
+		});
+	}
 
-			console.log(decoded);
+	public static async syncHeaders({
+		graphqlService, headerRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository }
+	): Promise<void> {
+		const startingHeaderId = 1;
+		const maxHeaderId = await headerRepository.getMaxHeaderId();
+		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
 
-			console.log(decoded[0].toString('hex'));
-			console.log(decoded[1].toString('hex'));
-			console.log(decoded[2].toString('hex'));
+		for (let page = 1; page <= maxPage; page++) {
+			await DataService._syncHeadersByPage(
+				{
+					graphqlService,
+					headerRepository,
+					dataService
+				},
+				startingHeaderId,
+				maxHeaderId,
+				page,
+			)
 		}
+	}
+
+	protected static async _syncHeadersByPage({
+		graphqlService, headerRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository },
+		startingHeaderId: number,
+		maxHeaderId: number,
+		page: number,
+		limit: number = LIMIT,
+	): Promise<number[]> {
+		const syncedHeaders = await headerRepository.findSyncedHeaders((page - 1) * limit, limit);
+
+		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
+		const start = startingHeaderId + (page -1) * limit; // start header id for current page
+
+		const allHeaderIds = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedIds= syncedHeaders.map((p) => p.id);
+		const notSyncedIds = allHeaderIds.filter(x => !syncedIds.includes(x));
+
+		for (const headerId of notSyncedIds) {
+			const header = await graphqlService.ethHeaderCidById(headerId);
+			await dataService.processHeader(header.ethHeaderCidById);
+			
+		}
+
+		return notSyncedIds;
 	}
 
 }
