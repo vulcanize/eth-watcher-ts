@@ -19,7 +19,7 @@ export default class DataService {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string, blockNumber: number): Promise<void> {
 
-		const tableName = `data.event_for_contract_id_${contractId}`;
+		const tableName = `data.contract_id_${contractId}_event_id_${eventId}`;
 
 		if (!data) {
 			return;
@@ -36,7 +36,7 @@ export default class DataService {
 					name: tableName,
 					columns: [
 						{
-							name: 'event_data_id',
+							name: 'id',
 							type: 'integer',
 							isPrimary: true,
 							isGenerated: true,
