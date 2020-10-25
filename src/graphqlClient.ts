@@ -16,6 +16,9 @@ export default class GraphqlClient {
 
 		const subscriptionClient = new SubscriptionClient(GRAPHQL_ENDPOINT, {
 			reconnect: true,
+			connectionCallback: (error) => {
+				console.error(error);
+			}
 		}, ws);
 		const wsLink = new WebSocketLink(subscriptionClient);
 
@@ -25,6 +28,7 @@ export default class GraphqlClient {
 		});
 
 		subscriptionClient.onError((err: ErrorEvent) => {
+			console.log(err);
 			if (err?.error?.code === 'ENOTFOUND') {
 				throw err;
 			}
@@ -41,7 +45,7 @@ export default class GraphqlClient {
 			wsLink,
 			httpLink
 		);
-		
+
 		this.client = new ApolloClient({
 			link,
 			cache: new InMemoryCache(),
@@ -66,7 +70,7 @@ export default class GraphqlClient {
 	public async query(query: string): Promise<any> { // eslint-disable-line
 		const { data } = await this.client.query({
 			query: gql`${query}`,
-		}); 
+		});
 
 		return data;
 	}

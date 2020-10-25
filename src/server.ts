@@ -18,9 +18,14 @@ import GraphqlService from './services/graphqlService';
 
 		if (env.ENABLE_EVENT_WATCHER) {
 			graphqlService.subscriptionReceiptCids(); // async
+		} else {
+			console.info('Event watcher is not enabled');
 		}
+
 		if (env.ENABLE_HEADER_WATCHER) {
 			graphqlService.subscriptionHeaderCids(); // async
+		} else {
+			console.info('Header watcher is not enabled');
 		}
 
 		if (env.HTTP_ENABLE) {
