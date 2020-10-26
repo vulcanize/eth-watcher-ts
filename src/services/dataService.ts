@@ -14,12 +14,65 @@ import Header from '../models/data/header';
 
 const LIMIT = 1000;
 
+type EventData = {
+	name: string;
+	internalType: string;
+	value?: any; // eslint-disable-line
+}
+
 export default class DataService {
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string, blockNumber: number): Promise<void> {
+	public async createTable(eventId: number, contractId: number, data: EventData[]): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = this._getTableName(eventId, contractId);
+			const table = await entityManager.queryRunner.getTable(tableName);
 
-		const tableName = `data.contract_id_${contractId}_event_id_${eventId}`;
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions: TableOptions = {
+				name: tableName,
+				columns: [
+					{
+						name: 'id',
+						type: 'integer',
+						isPrimary: true,
+						isGenerated: true,
+						generationStrategy: 'increment'
+					},{
+						name: 'event_id',
+						type: 'integer',
+					}, {
+						name: 'contract_id',
+						type: 'integer',
+					}, {
+						name: 'mh_key',
+						type: 'text',
+					},
+				]
+			};
+
+			data.forEach((line) => {
+				tableOptions.columns.push({
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: this._getPgType(line.internalType),
+					isNullable: true,
+				});
+			});
+
+			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			console.log('create new table', tableName);
+		});
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async addEvent (eventId: number, contractId: number, data: EventData[], mhKey: string, blockNumber: number): Promise<void> {
+
+		await this.createTable(eventId, contractId, data); // TODO: do it in advance
+
+		const tableName = this._getTableName(eventId, contractId);
 
 		if (!data) {
 			return;
@@ -28,43 +81,6 @@ export default class DataService {
 		return getConnection().transaction(async (entityManager) => {
 
 			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
-
-			const table = await entityManager.queryRunner.getTable(tableName);
-
-			if (!table) {
-				const tableOptions: TableOptions = {
-					name: tableName,
-					columns: [
-						{
-							name: 'id',
-							type: 'integer',
-							isPrimary: true,
-							isGenerated: true,
-							generationStrategy: "increment"
-						},{
-							name: 'event_id',
-							type: 'integer',
-						}, {
-							name: 'contract_id',
-							type: 'integer',
-						}, {
-							name: 'mh_key',
-							type: 'text',
-						},
-					]
-				};
-
-				data.forEach((line) => {
-					tableOptions.columns.push({
-						name: `data_${line.name.toLowerCase().trim()}`,
-						type: this._getPgType(line.internalType),
-						isNullable: true,
-					});
-				});
-
-				await entityManager.queryRunner.createTable(new Table(tableOptions), true);
-			}
-
 			const sql = `INSERT INTO ${tableName}
 (event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 VALUES
@@ -322,6 +338,10 @@ VALUES
 		}
 
 		return notSyncedIds;
+	}
+
+	private _getTableName(eventId: number, contractId: number): string {
+		return `data.contract_id_${contractId}_event_id_${eventId}`;
 	}
 
 }
