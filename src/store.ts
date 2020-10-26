@@ -45,6 +45,10 @@ export default class Store {
 		return this.events;
 	}
 	
+	public getEventById(eventId: number): Event {
+		return (this.events || []).find((event) => event.eventId === eventId);
+	}
+
 	public getMethods(): Method[] {
 		return this.methods;
 	}

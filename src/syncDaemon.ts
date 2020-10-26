@@ -39,16 +39,14 @@ console.log('Cron daemon is started');
 				const store = Store.getStore();
 				await store.syncData();
 
-				const contracts: Contract[] = Store.getStore().getContracts();
-				const events: Event[] = Store.getStore().getEvents();
+				const contracts: Contract[] = store.getContracts();
 
 				console.log('Contracts', contracts.length);
-				console.log('events', events.length);
 
 				const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
 				for (const contract of contracts) {
 					for (const eventId of (contract.events || [])) {
-						const event = events.find((e) => e.eventId === eventId);
+						const event: Event = store.getEventById(eventId);
 						console.log('Contract', contract.contractId, 'Event', event.name);
 
 						await DataService.syncEventForContract({ graphqlService, dataService, progressRepository }, event, contract);
