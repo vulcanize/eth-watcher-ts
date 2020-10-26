@@ -125,8 +125,10 @@ VALUES
 			return;
 		}
 
-		const events: Event[] = Store.getStore().getEvents();
-		for (const e of events) {
+		const allEvents: Event[] = Store.getStore().getEvents();
+		const targetEvents = allEvents.filter((event) => target.events.includes(event.eventId));
+
+		for (const e of targetEvents) {
 			const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
 			const event = contractAbi.find((a) => a.name === e.name);
 

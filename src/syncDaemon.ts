@@ -47,7 +47,8 @@ console.log('Cron daemon is started');
 
 				const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
 				for (const contract of contracts) {
-					for (const event of events) {
+					for (const eventId of (contract.events || [])) {
+						const event = events.find((e) => e.eventId === eventId);
 						console.log('Contract', contract.contractId, 'Event', event.name);
 
 						await DataService.syncEventForContract({ graphqlService, dataService, progressRepository }, event, contract);
