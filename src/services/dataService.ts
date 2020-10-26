@@ -121,7 +121,7 @@ VALUES
 		}
 
 		const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
-		if (!target) {
+		if (!target || !target.events) {
 			return;
 		}
 
