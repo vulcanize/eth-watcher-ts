@@ -44,9 +44,14 @@ export default class Store {
 	public getEvents(): Event[] {
 		return this.events;
 	}
-	
-	public getEventById(eventId: number): Event {
-		return (this.events || []).find((event) => event.eventId === eventId);
+
+	public getEventsByContractId(contractId: number): Event[] {
+		const contract = (this.contracts || []).find((contract) => contract.contractId === contractId);
+		if (!contract || !contract.events) {
+			return [];
+		}
+
+		return (this.events || []).filter((event) => contract.events.includes(event.eventId));
 	}
 
 	public getMethods(): Method[] {
