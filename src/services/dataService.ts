@@ -12,6 +12,8 @@ import GraphqlService from './graphqlService';
 import HeaderRepository from '../repositories/data/headerRepository';
 import Header from '../models/data/header';
 import env from '../env';
+import Transaction from '../models/data/transaction';
+import TransactionRepository from '../repositories/data/transactionRepository';
 
 const LIMIT = 1000;
 
@@ -111,6 +113,7 @@ VALUES
 		}
 
 		if (env.ENABLE_HEADER_WATCHER) {
+			await this.processTransaction(relatedNode?.ethTransactionCidByTxId);
 			await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId)
 		}
 
@@ -257,6 +260,19 @@ VALUES
 		}
 
 		return notSyncedBlocks;
+	}
+
+	public async processTransaction(ethTransaction): Promise<Transaction> {
+		if (!ethTransaction) {
+			return;
+		}
+
+		return getConnection().transaction(async (entityManager) => {
+			const transactionRepository: TransactionRepository = entityManager.getCustomRepository(TransactionRepository);
+			const transaction = await transactionRepository.add(ethTransaction.id, ethTransaction);
+
+			return transaction;
+		});
 	}
 
 	public async processHeader(relatedNode: { id; td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<Header> {
