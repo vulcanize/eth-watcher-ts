@@ -20,59 +20,32 @@ type EventData = {
 	value?: any; // eslint-disable-line
 }
 
+type ABI = Array<{
+	name: string;
+	type: string;
+	inputs: {
+		name: string;
+		type: string;
+		indexed: boolean;
+		internalType: string;
+	}[];
+}>
+
 export default class DataService {
 
-	public async createTable(eventId: number, contractId: number, data: EventData[]): Promise<void> {
-		return getConnection().transaction(async (entityManager) => {
-			const tableName = this._getTableName(eventId, contractId);
-			const table = await entityManager.queryRunner.getTable(tableName);
-
-			if (table) {
-				console.log(`Table ${tableName} already exists`);
-				return;
+	public async createTables(contracts: Contract[] = []): Promise<void> {
+		for (const contract of contracts) {
+			const events: Event[] = Store.getStore().getEventsByContractId(contract.contractId);
+			for (const event of events) {
+				await this._createTable(contract, event)
 			}
-
-			const tableOptions: TableOptions = {
-				name: tableName,
-				columns: [
-					{
-						name: 'id',
-						type: 'integer',
-						isPrimary: true,
-						isGenerated: true,
-						generationStrategy: 'increment'
-					},{
-						name: 'event_id',
-						type: 'integer',
-					}, {
-						name: 'contract_id',
-						type: 'integer',
-					}, {
-						name: 'mh_key',
-						type: 'text',
-					},
-				]
-			};
-
-			data.forEach((line) => {
-				tableOptions.columns.push({
-					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
-					isNullable: true,
-				});
-			});
-
-			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
-			console.log('create new table', tableName);
-		});
+		}
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: EventData[], mhKey: string, blockNumber: number): Promise<void> {
 
-		await this.createTable(eventId, contractId, data); // TODO: do it in advance
-
-		const tableName = this._getTableName(eventId, contractId);
+		const tableName = this._getTableName(contractId, eventId);
 
 		if (!data) {
 			return;
@@ -143,7 +116,7 @@ VALUES
 
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
 		for (const e of targetEvents) {
-			const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
+			const contractAbi = target.abi as ABI;
 			const event = contractAbi.find((a) => a.name === e.name);
 
 			if (!event) {
@@ -340,8 +313,54 @@ VALUES
 		return notSyncedIds;
 	}
 
-	private _getTableName(eventId: number, contractId: number): string {
+	private _getTableName(contractId: number, eventId: number): string {
 		return `data.contract_id_${contractId}_event_id_${eventId}`;
+	}
+
+	private async _createTable(contract: Contract, event: Event): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = this._getTableName(contract.contractId, event.eventId);
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions: TableOptions = {
+				name: tableName,
+				columns: [
+					{
+						name: 'id',
+						type: 'integer',
+						isPrimary: true,
+						isGenerated: true,
+						generationStrategy: 'increment'
+					},{
+						name: 'event_id',
+						type: 'integer',
+					}, {
+						name: 'contract_id',
+						type: 'integer',
+					}, {
+						name: 'mh_key',
+						type: 'text',
+					},
+				]
+			};
+
+			const data: EventData[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+			data.forEach((line) => {
+				tableOptions.columns.push({
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: this._getPgType(line.internalType),
+					isNullable: true,
+				});
+			});
+
+			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			console.log('create new table', tableName);
+		});
 	}
 
 }

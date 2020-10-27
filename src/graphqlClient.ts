@@ -16,8 +16,8 @@ export default class GraphqlClient {
 
 		const subscriptionClient = new SubscriptionClient(GRAPHQL_ENDPOINT, {
 			reconnect: true,
-			connectionCallback: (error) => {
-				console.error(error);
+			connectionCallback: (error): void => {
+				error && console.error(error);
 			}
 		}, ws);
 		const wsLink = new WebSocketLink(subscriptionClient);
