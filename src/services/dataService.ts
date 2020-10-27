@@ -14,21 +14,22 @@ import Header from '../models/data/header';
 
 const LIMIT = 1000;
 
-type EventData = {
+type ABIInput = {
 	name: string;
+	type: string;
+	indexed: boolean;
 	internalType: string;
+}
+
+type ABIInputData = {
+	name: string;
 	value?: any; // eslint-disable-line
 }
 
 type ABI = Array<{
 	name: string;
 	type: string;
-	inputs: {
-		name: string;
-		type: string;
-		indexed: boolean;
-		internalType: string;
-	}[];
+	inputs: ABIInput[];
 }>
 
 export default class DataService {
@@ -43,7 +44,7 @@ export default class DataService {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: EventData[], mhKey: string, blockNumber: number): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
 
 		const tableName = this._getTableName(contractId, eventId);
 
@@ -151,7 +152,7 @@ VALUES
 
 					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
 
-					const array = [];
+					const array: ABIInputData[] = [];
 					indexedEvents.forEach((event, index) => {
 						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
 
@@ -159,7 +160,6 @@ VALUES
 							array.push({
 								name: event.name,
 								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
-								internalType: event.internalType,
 							});
 						} catch (e) {
 							console.log('Error wtih', event.name, event.internalType, e.message);
@@ -170,7 +170,6 @@ VALUES
 						array.push({
 							name: event.name,
 							value: messages[index],
-							internalType: event.internalType,
 						});
 					});
 
@@ -349,7 +348,7 @@ VALUES
 				]
 			};
 
-			const data: EventData[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
 			data.forEach((line) => {
 				tableOptions.columns.push({
 					name: `data_${line.name.toLowerCase().trim()}`,
