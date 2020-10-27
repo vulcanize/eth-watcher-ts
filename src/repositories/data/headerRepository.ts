@@ -22,7 +22,7 @@ export default class HeaderRepository extends Repository<Header> {
 		timesValidated,
 		timestamp,
 	}): Promise<Header> {
-		return this.save({
+		return this.create({
 			id,
 			td,
 			blockHash,

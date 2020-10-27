@@ -55,4 +55,7 @@ export default class Header {
 
 	@Column("integer", { name: "times_validated", default: () => "1" })
 	timesValidated: number;
+
+	@Column("integer", { name: "eth_node_id", nullable: true })
+	ethNodeId: number;
 }
