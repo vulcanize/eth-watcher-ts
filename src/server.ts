@@ -22,7 +22,9 @@ import GraphqlService from './services/graphqlService';
 			console.info('Event watcher is not enabled');
 		}
 
-		if (env.ENABLE_HEADER_WATCHER) {
+		if (env.ENABLE_HEADER_WATCHER && env.ENABLE_EVENT_WATCHER) {
+			console.log('Header watcher will work via Event watcher');
+		} else if (env.ENABLE_HEADER_WATCHER && !env.ENABLE_EVENT_WATCHER) {
 			graphqlService.subscriptionHeaderCids(); // async
 		} else {
 			console.info('Header watcher is not enabled');

@@ -11,6 +11,7 @@ import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
 import HeaderRepository from '../repositories/data/headerRepository';
 import Header from '../models/data/header';
+import env from '../env';
 
 const LIMIT = 1000;
 
@@ -105,7 +106,15 @@ VALUES
 
 	public async processEvent(relatedNode): Promise<void> {
 
-		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
+		if (!relatedNode) {
+			return;
+		}
+
+		if (env.ENABLE_HEADER_WATCHER) {
+			await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId)
+		}
+
+		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
 			return;
 		}
