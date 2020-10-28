@@ -3,11 +3,7 @@ import Event from "./models/contract/event";
 import Method from "./models/contract/method";
 import ContractService from "./services/contractService";
 import DataService from "./services/dataService";
-
 import env from './env';
-
-const contractService = new ContractService();
-const dataService = new DataService();
 
 export default class Store {
 	private static store: Store;
@@ -16,7 +12,13 @@ export default class Store {
 	private events: Event[];
 	private methods: Method[];
 
+	private contractService: ContractService;
+	private dataService: DataService;
+
 	private constructor() {
+		this.contractService = new ContractService();
+		this.dataService = new DataService();
+
 		this.contracts = [];
 		this.events = [];
 		this.methods = [];
@@ -62,12 +64,12 @@ export default class Store {
 
 	public async syncData(): Promise<void> {
 		[this.contracts, this.events, this.methods] = await Promise.all([
-			contractService.loadContracts(),
-			contractService.loadEvents(),
-			contractService.loadMethods()
+			this.contractService.loadContracts(),
+			this.contractService.loadEvents(),
+			this.contractService.loadMethods()
 		])
 
-		await dataService.createTables(this.contracts);
+		await this.dataService.createTables(this.contracts);
 
 		console.log(`Loaded ${this.contracts.length} contracts config and ${this.events.length} events and ${this.methods.length} methods`);
 	}

@@ -11,7 +11,6 @@ import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
 import HeaderRepository from '../repositories/data/headerRepository';
 import Header from '../models/data/header';
-import env from '../env';
 import Transaction from '../models/data/transaction';
 import TransactionRepository from '../repositories/data/transactionRepository';
 
@@ -49,7 +48,7 @@ export default class DataService {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
 
-		const tableName = this._getTableName(contractId, eventId);
+		const tableName = DataService._getTableName(contractId, eventId);
 
 		if (!data) {
 			return;
@@ -75,7 +74,7 @@ VALUES
 		});
 	}
 
-	private _getPgType(abiType: string): string {
+	private static _getPgType(abiType: string): string {
 		let pgType = 'TEXT';
 
 		// Fill in pg type based on abi type
@@ -112,10 +111,8 @@ VALUES
 			return;
 		}
 
-		if (env.ENABLE_HEADER_WATCHER) {
-			await this.processTransaction(relatedNode?.ethTransactionCidByTxId);
-			await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId)
-		}
+		await this.processTransaction(relatedNode?.ethTransactionCidByTxId);
+		await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId)
 
 		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
@@ -224,8 +221,7 @@ VALUES
 		}
 	}
 
-	// TODO: move to private
-	public static async _syncEventForContractPage({
+	private static async _syncEventForContractPage({
 		graphqlService, progressRepository, dataService
 	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
 		event: Event,
@@ -337,21 +333,14 @@ VALUES
 		return notSyncedIds;
 	}
 
-	private _getTableName(contractId: number, eventId: number): string {
+	private static _getTableName(contractId: number, eventId: number): string {
 		return `data.contract_id_${contractId}_event_id_${eventId}`;
 	}
 
-	private async _createTable(contract: Contract, event: Event): Promise<void> {
-		return getConnection().transaction(async (entityManager) => {
-			const tableName = this._getTableName(contract.contractId, event.eventId);
-			const table = await entityManager.queryRunner.getTable(tableName);
+	private static _getTableOptions(contract: Contract, event: Event): TableOptions {
+		const tableName = this._getTableName(contract.contractId, event.eventId);
 
-			if (table) {
-				console.log(`Table ${tableName} already exists`);
-				return;
-			}
-
-			const tableOptions: TableOptions = {
+		const tableOptions: TableOptions = {
 				name: tableName,
 				columns: [
 					{
@@ -382,6 +371,20 @@ VALUES
 				});
 			});
 
+			return tableOptions;
+	}
+
+	private async _createTable(contract: Contract, event: Event): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = DataService._getTableName(contract.contractId, event.eventId);
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions = DataService._getTableOptions(contract, event);
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
 			console.log('create new table', tableName);
 		});
