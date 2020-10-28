@@ -5,7 +5,7 @@ export class Transaction1603782913450 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`
-            CREATE TABLE "eth"."transaction" (
+            CREATE TABLE "data"."transaction" (
                 "id" SERIAL NOT NULL,
                 "header_id" integer NOT NULL,
                 "tx_hash" character varying(66) NOT NULL,
@@ -19,11 +19,11 @@ export class Transaction1603782913450 implements MigrationInterface {
                 "node_id" character varying(128) NOT NULL,
                 CONSTRAINT "transaction_pkey" PRIMARY KEY ("id")
             )`);
-        await queryRunner.query(`CREATE UNIQUE INDEX "transaction_header_id_tx_hash_key" ON "eth"."transaction" ("header_id", "tx_hash") `);
+        await queryRunner.query(`CREATE UNIQUE INDEX "transaction_header_id_tx_hash_key" ON "data"."transaction" ("header_id", "tx_hash") `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`DROP TABLE "eth"."transaction"`);
+        await queryRunner.query(`DROP TABLE "data"."transaction"`);
     }
 
 }

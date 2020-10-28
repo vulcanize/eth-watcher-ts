@@ -4,7 +4,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 	unique: true,
 })
 @Index("transaction_pkey", ["id"], { unique: true })
-@Entity("transaction", { schema: "eth" })
+@Entity("transaction", { schema: "data" })
 export default class Transaction {
 	@PrimaryGeneratedColumn({ type: "integer", name: "id" })
 	id: number;
