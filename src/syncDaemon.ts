@@ -4,7 +4,7 @@ dotenv.config();
 import * as cron from 'node-cron';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
-import HeaderRepository from './repositories/data/headerRepository';
+import HeaderCidsRepository from './repositories/eth/headerCidsRepository';
 import Contract from './models/contract/contract';
 import Event from './models/contract/event';
 import Store from './store';
@@ -67,8 +67,8 @@ console.log('Cron daemon is started');
 
 				statusHeaderSync = 'running';
 
-				const headerRepository: HeaderRepository = getConnection().getCustomRepository(HeaderRepository);
-				await DataService.syncHeaders({ graphqlService, dataService, headerRepository });
+				const headerCidsRepository: HeaderCidsRepository = getConnection().getCustomRepository(HeaderCidsRepository);
+				await DataService.syncHeaders({ graphqlService, dataService, headerCidsRepository });
 
 				statusHeaderSync = 'waiting';
 			});

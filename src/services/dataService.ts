@@ -9,10 +9,10 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
-import HeaderRepository from '../repositories/data/headerRepository';
-import Header from '../models/data/header';
-import Transaction from '../models/data/transaction';
-import TransactionRepository from '../repositories/data/transactionRepository';
+import HeaderCids from '../models/eth/headerCids';
+import TransactionCids from '../models/eth/transactionCids';
+import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
+import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
 
 const LIMIT = 1000;
 
@@ -108,8 +108,8 @@ VALUES
 			return;
 		}
 
-		await this.processTransaction(relatedNode?.ethTransactionCidByTxId);
-		await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId)
+		const header: HeaderCids = await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId);
+		await this.processTransaction(relatedNode?.ethTransactionCidByTxId, header.id);
 
 		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
@@ -255,46 +255,46 @@ VALUES
 		return notSyncedBlocks;
 	}
 
-	public async processTransaction(ethTransaction): Promise<Transaction> {
+	public async processTransaction(ethTransaction, headerId: number): Promise<TransactionCids> {
 		if (!ethTransaction) {
 			return;
 		}
 
 		return getConnection().transaction(async (entityManager) => {
-			const transactionRepository: TransactionRepository = entityManager.getCustomRepository(TransactionRepository);
-			const transaction = await transactionRepository.add(ethTransaction.id, ethTransaction);
+			const transactionCidsRepository: TransactionCidsRepository = entityManager.getCustomRepository(TransactionCidsRepository);
+			const transaction = await transactionCidsRepository.add(headerId, ethTransaction);
 
 			return transaction;
 		});
 	}
 
-	public async processHeader(relatedNode: { id; td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<Header> {
+	public async processHeader(relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
 
 		if (!relatedNode) {
 			return;
 		}
 
 		return getConnection().transaction(async (entityManager) => {
-			const headerRepository: HeaderRepository = entityManager.getCustomRepository(HeaderRepository);
-			const header = await headerRepository.add(relatedNode.id, relatedNode);
+			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
+			const header = await headerCidsRepository.add(relatedNode);
 
 			return header;
 		});
 	}
 
 	public static async syncHeaders({
-		graphqlService, headerRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository }
+		graphqlService, headerCidsRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository }
 	): Promise<void> {
 		const startingHeaderId = 1;
-		const maxHeaderId = await headerRepository.getMaxHeaderId();
+		const maxHeaderId = await headerCidsRepository.getMaxHeaderId();
 		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
 				{
 					graphqlService,
-					headerRepository,
+					headerCidsRepository,
 					dataService
 				},
 				startingHeaderId,
@@ -305,14 +305,14 @@ VALUES
 	}
 
 	protected static async _syncHeadersByPage({
-		graphqlService, headerRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository },
+		graphqlService, headerCidsRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository },
 		startingHeaderId: number,
 		maxHeaderId: number,
 		page: number,
 		limit: number = LIMIT,
 	): Promise<number[]> {
-		const syncedHeaders = await headerRepository.findSyncedHeaders((page - 1) * limit, limit);
+		const syncedHeaders = await headerCidsRepository.findSyncedHeaders((page - 1) * limit, limit);
 
 		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
 		const start = startingHeaderId + (page -1) * limit; // start header id for current page
