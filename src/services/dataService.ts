@@ -80,26 +80,23 @@ VALUES
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
 			case 'address':
-				pgType = 'CHARACTER VARYING(66)';
+				pgType = 'character varying(66)';
 				break;
 			case 'int':
 			case 'uint':
-				pgType = 'NUMERIC';
+				pgType = 'numeric';
 				break;
 			case 'bool':
-				pgType = 'BOOLEAN';
+				pgType = 'boolean';
 				break;
 			case 'bytes':
-				pgType = "BYTEA";
+				pgType = "bytea";
 				break;
 			// case abi.ArrayTy:
-			// 	pgType = "TEXT[]";
-			// 	break;
-			// case abi.FixedPointTy:
-			// 	pgType = "MONEY" // use shopspring/decimal for fixed point numbers in go and money type in postgres?
+			// 	pgType = "text[]";
 			// 	break;
 			default:
-				pgType = "TEXT";
+				pgType = "text";
 		}
 
 		return pgType;

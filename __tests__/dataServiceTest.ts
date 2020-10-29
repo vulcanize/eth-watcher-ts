@@ -133,7 +133,7 @@ test('_getTableOptions', async () => {
 		}, {
 			"isNullable": true,
 			"name": "data_message",
-			"type": "TEXT",
+			"type": "text",
 		}],
 		"name": "data.contract_id_1_event_id_2",
 	});
