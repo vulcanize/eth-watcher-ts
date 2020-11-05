@@ -29,4 +29,11 @@ export default class GraphqlService {
 		return graphqlRepository.subscriptionHeaderCids((data) => dataService.processHeader(data?.data?.listen?.relatedNode))
 	}
 
+	public async subscriptionStateCids(): Promise<void> {
+		const dataService = new DataService();
+
+		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
+		return graphqlRepository.subscriptionStateCids((data) => dataService.processState(data?.data?.listen?.relatedNode))
+	}
+
 }

@@ -13,6 +13,10 @@ import HeaderCids from '../models/eth/headerCids';
 import TransactionCids from '../models/eth/transactionCids';
 import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
 import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
+import StateCids from '../models/eth/stateCids';
+import State from '../models/contract/state';
+
+const Web3 = require('web3'); // eslint-disable-line
 
 const LIMIT = 1000;
 
@@ -280,6 +284,42 @@ VALUES
 
 			return header;
 		});
+	}
+
+	public async processState(relatedNode): Promise<StateCids> {
+
+		if (!relatedNode) {
+			return;
+		}
+
+		// TODO: get contract + state configs
+		const states = [{ stateId: 1, slot: 0, type: 'uint'}] as State[];
+
+		// console.log(Web3.utils.padRight(Web3.utils.toHex(state.slot).substring(2), 64)) -> 0000000000000000000000000000000000000000000000000000000000000000
+		if (relatedNode?.storageCidsByStateId?.nodes?.length) {
+			for (const state of states) {
+				const storageLeafKey = Web3.utils.soliditySha3({ t: 'bytes32', v: state.slot.toString()});
+				console.log('storageLeafKey', storageLeafKey);
+
+				const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
+				console.log('storage', storage);
+				if (!storage) {
+					continue;
+				}
+
+				const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+				const decoded: any = rlp.decode(buffer); // eslint-disable-line
+				console.log(decoded[0].toString('hex'));
+				console.log(abi.rawDecode([ 'uint' ], Buffer.from(decoded[1], 'hex')));
+				console.log(abi.rawDecode([ 'uint' ], Buffer.from(decoded[1], 'hex'))[0].toString(10));
+
+				// const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
+
+				// return getConnection().transaction(async (entityManager) => {
+				// 	// save copy
+				// });
+			}
+		}
 	}
 
 	public static async syncHeaders({

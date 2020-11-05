@@ -73,5 +73,9 @@ console.log('Cron daemon is started');
 				statusHeaderSync = 'waiting';
 			});
 		}
+
+		if (env.ENABLE_STORAGE_WATCHER) {
+			// TODO:
+		}
 	});
 })();

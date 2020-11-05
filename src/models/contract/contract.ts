@@ -22,6 +22,9 @@ export default class Contract {
 	@Column("int4", { name: "methods", nullable: true, array: true })
 	methods: number[] | null;
 
+	@Column("int4", { name: "states", nullable: true, array: true })
+	states: number[] | null;
+
 	@Column("integer", { name: "starting_block" })
 	startingBlock: number;
 }

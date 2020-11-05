@@ -170,5 +170,41 @@ export default class GraphqlRepository {
 			}
 		`, onNext);
 	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public subscriptionStateCids(onNext: (value: any) => void): Promise<void> {
+		return this.graphqlClient.subscribe(`
+			subscription MySubscription {
+				listen(topic: "state_cids") {
+					relatedNode {
+					... on StateCid {
+						id
+						blockByMhKey {
+							data
+							key
+						}
+						stateLeafKey
+						statePath
+						mhKey
+						headerId
+						storageCidsByStateId {
+							nodes {
+								storageLeafKey
+								storagePath
+								mhKey
+								id
+								stateId
+								blockByMhKey {
+									data
+									key
+								}
+							}
+						}
+					}
+					}
+				}
+			}
+		`, onNext);
+	}
 }
 
