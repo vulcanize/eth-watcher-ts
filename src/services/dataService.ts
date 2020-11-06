@@ -87,6 +87,31 @@ VALUES
 		});
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async addState (contractId: number, mhKey: string, state: State, value: any): Promise<void> {
+
+		const tableName = DataService._getTableName({
+			contractId,
+			type: 'state',
+			id: state.stateId,
+		});
+
+		return getConnection().transaction(async (entityManager) => {
+			const sql = `INSERT INTO ${tableName}
+(state_id, contract_id, mh_key, slot_${state.slot})
+VALUES
+(${state.stateId}, ${contractId}, '${mhKey}', '${value}');`;
+
+			console.log(sql);
+
+			const [err] = await to(entityManager.queryRunner.query(sql));
+			if (err) {
+				// TODO: throw err
+				console.log(err);	
+			}
+		});
+	}
+
 	private static _getPgType(abiType: string): string {
 		let pgType = 'TEXT';
 
@@ -302,6 +327,7 @@ VALUES
 		}
 
 		// TODO: get contract + state configs
+		const contractId = 4;
 		const states = [{ stateId: 1, slot: 0, type: 'uint'}] as State[];
 
 		if (relatedNode?.storageCidsByStateId?.nodes?.length) {
@@ -318,10 +344,12 @@ VALUES
 
 				const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 				const decoded: any = rlp.decode(buffer); // eslint-disable-line
-				console.log(decoded[0].toString('hex'));
-				console.log(abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex')));
-				console.log(abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0].toString(10));
+				const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
 
+				console.log(decoded[0].toString('hex'));
+				console.log(value);
+
+				await this.addState(contractId, storage.blockByMhKey.key, state, value);
 				// const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
 
 				// return getConnection().transaction(async (entityManager) => {
