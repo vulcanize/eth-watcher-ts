@@ -69,6 +69,15 @@ export default class Store {
 		return this.states;
 	}
 
+	public getStatesByContractId(contractId: number): State[] {
+		const contract = (this.contracts || []).find((contract) => contract.contractId === contractId);
+		if (!contract || !contract.states) {
+			return [];
+		}
+
+		return (this.states || []).filter((state) => contract.states.includes(state.stateId));
+	}
+
 	public async syncData(): Promise<void> {
 		[this.contracts, this.events, this.methods, this.states] = await Promise.all([
 			this.contractService?.loadContracts(),

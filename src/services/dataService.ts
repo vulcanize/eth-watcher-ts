@@ -15,6 +15,7 @@ import TransactionCidsRepository from '../repositories/eth/transactionCidsReposi
 import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
 import StateCids from '../models/eth/stateCids';
 import State from '../models/contract/state';
+import ApplicationError from '../errors/applicationError';
 
 const LIMIT = 1000;
 const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -43,7 +44,12 @@ export default class DataService {
 		for (const contract of contracts) {
 			const events: Event[] = Store.getStore().getEventsByContractId(contract.contractId);
 			for (const event of events) {
-				await this._createTable(contract, event)
+				await this._createEventTable(contract, event)
+			}
+
+			const states: State[] = Store.getStore().getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				await this._createStateTable(contract, state)
 			}
 		}
 	}
@@ -51,7 +57,11 @@ export default class DataService {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
 
-		const tableName = DataService._getTableName(contractId, eventId);
+		const tableName = DataService._getTableName({
+			contractId,
+			type: 'event',
+			id: eventId
+		});
 
 		if (!data) {
 			return;
@@ -309,8 +319,8 @@ VALUES
 				const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 				const decoded: any = rlp.decode(buffer); // eslint-disable-line
 				console.log(decoded[0].toString('hex'));
-				console.log(abi.rawDecode([ 'uint' ], Buffer.from(decoded[1], 'hex')));
-				console.log(abi.rawDecode([ 'uint' ], Buffer.from(decoded[1], 'hex'))[0].toString(10));
+				console.log(abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex')));
+				console.log(abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0].toString(10));
 
 				// const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
 
@@ -369,12 +379,30 @@ VALUES
 		return notSyncedIds;
 	}
 
-	private static _getTableName(contractId: number, eventId: number): string {
-		return `data.contract_id_${contractId}_event_id_${eventId}`;
+	private static _getTableName({ contractId, type = 'event', id}): string {
+		return `data.contract_id_${contractId}_${type}_id_${id}`;
 	}
 
-	private static _getTableOptions(contract: Contract, event: Event): TableOptions {
-		const tableName = this._getTableName(contract.contractId, event.eventId);
+	private static _getTableOptions(contract: Contract, { event, state }: { event?: Event; state?: State }): TableOptions {
+		let tableName;
+		
+		if (!event && !state) {
+			throw new ApplicationError('Bad params');
+		}
+
+		if (event) {
+			tableName = this._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId,
+			});
+		} else if (state) {
+			tableName = this._getTableName({
+				contractId: contract.contractId,
+				type: 'state',
+				id: state.stateId,
+			});
+		}
 
 		const tableOptions: TableOptions = {
 				name: tableName,
@@ -385,9 +413,6 @@ VALUES
 						isPrimary: true,
 						isGenerated: true,
 						generationStrategy: 'increment'
-					},{
-						name: 'event_id',
-						type: 'integer',
 					}, {
 						name: 'contract_id',
 						type: 'integer',
@@ -398,21 +423,45 @@ VALUES
 				]
 			};
 
-			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
-			data.forEach((line) => {
+			if (event) {
 				tableOptions.columns.push({
-					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
+					name: 'event_id',
+					type: 'integer',
+				});
+
+				const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+				data.forEach((line) => {
+					tableOptions.columns.push({
+						name: `data_${line.name.toLowerCase().trim()}`,
+						type: this._getPgType(line.internalType),
+						isNullable: true,
+					});
+				});
+			}
+
+			if (state) {
+				tableOptions.columns.push({
+					name: 'state_id',
+					type: 'integer',
+				});
+				
+				tableOptions.columns.push({
+					name: `slot_${state.slot}`,
+					type: this._getPgType(state.type),
 					isNullable: true,
 				});
-			});
+			}
 
 			return tableOptions;
 	}
 
-	private async _createTable(contract: Contract, event: Event): Promise<void> {
+	private async _createEventTable(contract: Contract, event: Event): Promise<void> {
 		return getConnection().transaction(async (entityManager) => {
-			const tableName = DataService._getTableName(contract.contractId, event.eventId);
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId
+			});
 			const table = await entityManager.queryRunner.getTable(tableName);
 
 			if (table) {
@@ -420,7 +469,27 @@ VALUES
 				return;
 			}
 
-			const tableOptions = DataService._getTableOptions(contract, event);
+			const tableOptions = DataService._getTableOptions(contract, { event });
+			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			console.log('create new table', tableName);
+		});
+	}
+
+	private async _createStateTable(contract: Contract, state: State): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'state',
+				id: state.stateId,
+			});
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions = DataService._getTableOptions(contract, { state });
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
 			console.log('create new table', tableName);
 		});

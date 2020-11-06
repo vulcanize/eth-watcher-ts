@@ -5,6 +5,7 @@
 import DataService from '../src/services/dataService';
 import Event from '../src/models/contract/event';
 import Contract from '../src/models/contract/contract';
+import State from '../src/models/contract/state';
 
 const mockEvent1 = { eventId: 1, name: 'TestEvent1' } as Event;
 const mockEvent2 = { eventId: 2, name: 'MessageChanged' } as Event;
@@ -99,20 +100,26 @@ test('syncEventForContractPage Test with all synced blocks', async () => {
 
 test('_getTableOptions, test 1', async () => {
 	// @ts-ignore
-	const tableName = await DataService._getTableName(mockContract1.contractId, mockEvent1.eventId);
+	const tableName = await DataService._getTableName({
+		contractId: mockContract1.contractId,
+		id: mockEvent1.eventId
+	});
 	expect(tableName).toEqual('data.contract_id_1_event_id_1');
 });
 
 test('_getTableOptions, test 2', async () => {
 	// @ts-ignore
-	const tableName = await DataService._getTableName(mockContract1.contractId, mockEvent2.eventId);
+	const tableName = await DataService._getTableName({
+		contractId: mockContract1.contractId,
+		id: mockEvent2.eventId
+	});
 	expect(tableName).toEqual('data.contract_id_1_event_id_2');
 });
 
-test('_getTableOptions', async () => {
+test('_getTableOptions, event', async () => {
 
 	// @ts-ignore
-	const tableOptions = await DataService._getTableOptions(mockContract1, mockEvent2);
+	const tableOptions = await DataService._getTableOptions(mockContract1, { event: mockEvent2 });
 
 	expect(tableOptions).toEqual({
 		columns: [{
@@ -122,7 +129,35 @@ test('_getTableOptions', async () => {
 			"name": "id",
 			"type": "integer",
 		}, {
+			"name": "contract_id",
+			"type": "integer",
+		}, {
+			"name": "mh_key",
+			"type": "text",
+		}, {
 			"name": "event_id",
+			"type": "integer",
+		}, {
+			"isNullable": true,
+			"name": "data_message",
+			"type": "text",
+		}],
+		"name": "data.contract_id_1_event_id_2",
+	});
+});
+
+test('_getTableOptions, state', async () => {
+	const mockState = { stateId: 1, slot: 0, type: 'uint' } as State;
+
+	// @ts-ignore
+	const tableOptions = await DataService._getTableOptions(mockContract1, { state: mockState });
+
+	expect(tableOptions).toEqual({
+		columns: [{
+			"generationStrategy": "increment",
+			"isGenerated": true,
+			"isPrimary": true,
+			"name": "id",
 			"type": "integer",
 		}, {
 			"name": "contract_id",
@@ -131,10 +166,13 @@ test('_getTableOptions', async () => {
 			"name": "mh_key",
 			"type": "text",
 		}, {
+			"name": "state_id",
+			"type": "integer",
+		}, {
 			"isNullable": true,
-			"name": "data_message",
-			"type": "text",
+			"name": "slot_0",
+			"type": "numeric",
 		}],
-		"name": "data.contract_id_1_event_id_2",
+		"name": "data.contract_id_1_state_id_1",
 	});
 });
