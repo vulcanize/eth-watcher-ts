@@ -1,14 +1,23 @@
-import { Column, Entity, Index, PrimaryColumn } from "typeorm";
+import {
+	Column,
+	Entity,
+	Index,
+	OneToMany,
+	PrimaryGeneratedColumn,
+} from "typeorm";
+import StateCids from "./stateCids";
+import TransactionCids from "./transactionCids";
+import UncleCids from "./uncleCids";
 
 @Index(
-	"header_block_number_block_hash_key",
+	"header_cids_block_number_block_hash_key",
 	["blockHash", "blockNumber"],
 	{ unique: true }
 )
-@Index("header_pkey", ["id"], { unique: true })
-@Entity("header", { schema: "data" })
-export default class Header {
-	@PrimaryColumn({ type: "integer", name: "id" })
+@Index("header_cids_pkey", ["id"], { unique: true })
+@Entity("header_cids", { schema: "eth" })
+export default class HeaderCids {
+	@PrimaryGeneratedColumn({ type: "integer", name: "id" })
 	id: number;
 
 	@Column("bigint", { name: "block_number", unique: true })
@@ -29,8 +38,8 @@ export default class Header {
 	@Column("numeric", { name: "td" })
 	td: string;
 
-	@Column("character varying", { name: "node_id", length: 128 })
-	nodeId: string | null;
+	@Column("integer", { name: "node_id" })
+	nodeId: number;
 
 	@Column("numeric", { name: "reward" })
 	reward: string;
@@ -55,4 +64,13 @@ export default class Header {
 
 	@Column("integer", { name: "times_validated", default: () => "1" })
 	timesValidated: number;
+
+	@OneToMany(() => StateCids, (stateCids) => stateCids.header)
+	stateCids: StateCids[];
+
+	@OneToMany(() => TransactionCids, (transactionCids) => transactionCids.header)
+	transactionCids: TransactionCids[];
+
+	@OneToMany(() => UncleCids, (uncleCids) => uncleCids.header)
+	uncleCids: UncleCids[];
 }

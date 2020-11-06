@@ -102,8 +102,35 @@ export default class GraphqlRepository {
 							data
 						}
 						ethTransactionCidByTxId {
+							id
+							cid
+							deployment
+							headerId
+							index
+							mhKey
+							nodeId
+							dst
+							src
+							txData
+							txHash
 							ethHeaderCidByHeaderId {
+								id
+								td
+								blockHash
 								blockNumber
+								bloom
+								cid
+								mhKey
+								nodeId
+								ethNodeId
+								parentHash
+								receiptRoot
+								reward
+								timesValidated
+								timestamp
+								txRoot
+								uncleRoot
+								stateRoot
 							}
 						}
 					}

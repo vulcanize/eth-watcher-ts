@@ -4,7 +4,7 @@ dotenv.config();
 import * as cron from 'node-cron';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
-import HeaderRepository from './repositories/data/headerRepository';
+import HeaderCidsRepository from './repositories/eth/headerCidsRepository';
 import Contract from './models/contract/contract';
 import Event from './models/contract/event';
 import Store from './store';
@@ -39,14 +39,13 @@ console.log('Cron daemon is started');
 				const store = Store.getStore();
 				await store.syncData();
 
-				const contracts: Contract[] = Store.getStore().getContracts();
-				const events: Event[] = Store.getStore().getEvents();
+				const contracts: Contract[] = store.getContracts();
 
 				console.log('Contracts', contracts.length);
-				console.log('events', events.length);
 
 				const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
 				for (const contract of contracts) {
+					const events: Event[] = store.getEventsByContractId(contract.contractId);
 					for (const event of events) {
 						console.log('Contract', contract.contractId, 'Event', event.name);
 
@@ -68,8 +67,8 @@ console.log('Cron daemon is started');
 
 				statusHeaderSync = 'running';
 
-				const headerRepository: HeaderRepository = getConnection().getCustomRepository(HeaderRepository);
-				await DataService.syncHeaders({ graphqlService, dataService, headerRepository });
+				const headerCidsRepository: HeaderCidsRepository = getConnection().getCustomRepository(HeaderCidsRepository);
+				await DataService.syncHeaders({ graphqlService, dataService, headerCidsRepository });
 
 				statusHeaderSync = 'waiting';
 			});

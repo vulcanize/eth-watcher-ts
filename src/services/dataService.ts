@@ -9,17 +9,46 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
-import HeaderRepository from '../repositories/data/headerRepository';
-import Header from '../models/data/header';
+import HeaderCids from '../models/eth/headerCids';
+import TransactionCids from '../models/eth/transactionCids';
+import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
+import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
 
 const LIMIT = 1000;
 
+type ABIInput = {
+	name: string;
+	type: string;
+	indexed: boolean;
+	internalType: string;
+}
+
+type ABIInputData = {
+	name: string;
+	value?: any; // eslint-disable-line
+}
+
+type ABI = Array<{
+	name: string;
+	type: string;
+	inputs: ABIInput[];
+}>
+
 export default class DataService {
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: { name: string; internalType: string; value: any }[], mhKey: string, blockNumber: number): Promise<void> {
+	public async createTables(contracts: Contract[] = []): Promise<void> {
+		for (const contract of contracts) {
+			const events: Event[] = Store.getStore().getEventsByContractId(contract.contractId);
+			for (const event of events) {
+				await this._createTable(contract, event)
+			}
+		}
+	}
 
-		const tableName = `data.contract_id_${contractId}_event_id_${eventId}`;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+
+		const tableName = DataService._getTableName(contractId, eventId);
 
 		if (!data) {
 			return;
@@ -28,43 +57,6 @@ export default class DataService {
 		return getConnection().transaction(async (entityManager) => {
 
 			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
-
-			const table = await entityManager.queryRunner.getTable(tableName);
-
-			if (!table) {
-				const tableOptions: TableOptions = {
-					name: tableName,
-					columns: [
-						{
-							name: 'id',
-							type: 'integer',
-							isPrimary: true,
-							isGenerated: true,
-							generationStrategy: "increment"
-						},{
-							name: 'event_id',
-							type: 'integer',
-						}, {
-							name: 'contract_id',
-							type: 'integer',
-						}, {
-							name: 'mh_key',
-							type: 'text',
-						},
-					]
-				};
-
-				data.forEach((line) => {
-					tableOptions.columns.push({
-						name: `data_${line.name.toLowerCase().trim()}`,
-						type: this._getPgType(line.internalType),
-						isNullable: true,
-					});
-				});
-
-				await entityManager.queryRunner.createTable(new Table(tableOptions), true);
-			}
-
 			const sql = `INSERT INTO ${tableName}
 (event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 VALUES
@@ -82,32 +74,29 @@ VALUES
 		});
 	}
 
-	private _getPgType(abiType: string): string {
+	private static _getPgType(abiType: string): string {
 		let pgType = 'TEXT';
 
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
 			case 'address':
-				pgType = 'CHARACTER VARYING(66)';
+				pgType = 'character varying(66)';
 				break;
 			case 'int':
 			case 'uint':
-				pgType = 'NUMERIC';
+				pgType = 'numeric';
 				break;
 			case 'bool':
-				pgType = 'BOOLEAN';
+				pgType = 'boolean';
 				break;
 			case 'bytes':
-				pgType = "BYTEA";
+				pgType = "bytea";
 				break;
 			// case abi.ArrayTy:
-			// 	pgType = "TEXT[]";
-			// 	break;
-			// case abi.FixedPointTy:
-			// 	pgType = "MONEY" // use shopspring/decimal for fixed point numbers in go and money type in postgres?
+			// 	pgType = "text[]";
 			// 	break;
 			default:
-				pgType = "TEXT";
+				pgType = "text";
 		}
 
 		return pgType;
@@ -115,19 +104,26 @@ VALUES
 
 	public async processEvent(relatedNode): Promise<void> {
 
-		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
+		if (!relatedNode) {
+			return;
+		}
+
+		const header: HeaderCids = await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId);
+		await this.processTransaction(relatedNode?.ethTransactionCidByTxId, header.id);
+
+		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
 			return;
 		}
 
 		const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
-		if (!target) {
+		if (!target || !target.events) {
 			return;
 		}
 
-		const events: Event[] = Store.getStore().getEvents();
-		for (const e of events) {
-			const contractAbi = target.abi as Array<{ name: string; type: string; inputs: { name; type; indexed; internalType }[] }>;
+		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
+		for (const e of targetEvents) {
+			const contractAbi = target.abi as ABI;
 			const event = contractAbi.find((a) => a.name === e.name);
 
 			if (!event) {
@@ -162,7 +158,7 @@ VALUES
 
 					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
 
-					const array = [];
+					const array: ABIInputData[] = [];
 					indexedEvents.forEach((event, index) => {
 						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
 
@@ -170,7 +166,6 @@ VALUES
 							array.push({
 								name: event.name,
 								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
-								internalType: event.internalType,
 							});
 						} catch (e) {
 							console.log('Error wtih', event.name, event.internalType, e.message);
@@ -181,7 +176,6 @@ VALUES
 						array.push({
 							name: event.name,
 							value: messages[index],
-							internalType: event.internalType,
 						});
 					});
 
@@ -224,8 +218,7 @@ VALUES
 		}
 	}
 
-	// TODO: move to private
-	public static async _syncEventForContractPage({
+	private static async _syncEventForContractPage({
 		graphqlService, progressRepository, dataService
 	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
 		event: Event,
@@ -262,33 +255,46 @@ VALUES
 		return notSyncedBlocks;
 	}
 
-	public async processHeader(relatedNode: { id; td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<Header> {
+	public async processTransaction(ethTransaction, headerId: number): Promise<TransactionCids> {
+		if (!ethTransaction) {
+			return;
+		}
+
+		return getConnection().transaction(async (entityManager) => {
+			const transactionCidsRepository: TransactionCidsRepository = entityManager.getCustomRepository(TransactionCidsRepository);
+			const transaction = await transactionCidsRepository.add(headerId, ethTransaction);
+
+			return transaction;
+		});
+	}
+
+	public async processHeader(relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
 
 		if (!relatedNode) {
 			return;
 		}
 
 		return getConnection().transaction(async (entityManager) => {
-			const headerRepository: HeaderRepository = entityManager.getCustomRepository(HeaderRepository);
-			const header = await headerRepository.add(relatedNode.id, relatedNode);
+			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
+			const header = await headerCidsRepository.add(relatedNode);
 
 			return header;
 		});
 	}
 
 	public static async syncHeaders({
-		graphqlService, headerRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository }
+		graphqlService, headerCidsRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository }
 	): Promise<void> {
 		const startingHeaderId = 1;
-		const maxHeaderId = await headerRepository.getMaxHeaderId();
+		const maxHeaderId = await headerCidsRepository.getMaxHeaderId();
 		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
 				{
 					graphqlService,
-					headerRepository,
+					headerCidsRepository,
 					dataService
 				},
 				startingHeaderId,
@@ -299,14 +305,14 @@ VALUES
 	}
 
 	protected static async _syncHeadersByPage({
-		graphqlService, headerRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; headerRepository: HeaderRepository },
+		graphqlService, headerCidsRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository },
 		startingHeaderId: number,
 		maxHeaderId: number,
 		page: number,
 		limit: number = LIMIT,
 	): Promise<number[]> {
-		const syncedHeaders = await headerRepository.findSyncedHeaders((page - 1) * limit, limit);
+		const syncedHeaders = await headerCidsRepository.findSyncedHeaders((page - 1) * limit, limit);
 
 		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
 		const start = startingHeaderId + (page -1) * limit; // start header id for current page
@@ -322,6 +328,63 @@ VALUES
 		}
 
 		return notSyncedIds;
+	}
+
+	private static _getTableName(contractId: number, eventId: number): string {
+		return `data.contract_id_${contractId}_event_id_${eventId}`;
+	}
+
+	private static _getTableOptions(contract: Contract, event: Event): TableOptions {
+		const tableName = this._getTableName(contract.contractId, event.eventId);
+
+		const tableOptions: TableOptions = {
+				name: tableName,
+				columns: [
+					{
+						name: 'id',
+						type: 'integer',
+						isPrimary: true,
+						isGenerated: true,
+						generationStrategy: 'increment'
+					},{
+						name: 'event_id',
+						type: 'integer',
+					}, {
+						name: 'contract_id',
+						type: 'integer',
+					}, {
+						name: 'mh_key',
+						type: 'text',
+					},
+				]
+			};
+
+			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+			data.forEach((line) => {
+				tableOptions.columns.push({
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: this._getPgType(line.internalType),
+					isNullable: true,
+				});
+			});
+
+			return tableOptions;
+	}
+
+	private async _createTable(contract: Contract, event: Event): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = DataService._getTableName(contract.contractId, event.eventId);
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions = DataService._getTableOptions(contract, event);
+			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			console.log('create new table', tableName);
+		});
 	}
 
 }
