@@ -8,6 +8,7 @@ import ContractRepository from '../repositories/contract/contractRepository';
 import EventRepository from '../repositories/contract/eventRepository';
 import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
+import { keccak256 } from 'ethereumjs-util';
 
 export default class ContractService {
 
@@ -15,7 +16,13 @@ export default class ContractService {
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
 		const contracts = await contractRepository.findAll();
 
-		return contracts;
+		return contracts.map((c) => {
+			const addressHash = '0x' + keccak256(Buffer.from(c.address.replace('0x', ''), 'hex')).toString('hex');
+			return {
+				addressHash,
+				...c,
+			}
+		});
 	}
 
 	public async loadEvents (): Promise<Event[]> {

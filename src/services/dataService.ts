@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, rlp } from 'ethereumjs-util'
+import { keccak256, rlp } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -322,15 +322,13 @@ VALUES
 
 	public async processState(relatedNode): Promise<StateCids> {
 
-		if (!relatedNode) {
+		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
 		}
 
-		// TODO: get contract + state configs
-		const contractId = 4;
-		const states = [{ stateId: 1, slot: 0, type: 'uint'}] as State[];
-
-		if (relatedNode?.storageCidsByStateId?.nodes?.length) {
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
+		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
+			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
 				const slot = state.slot.toString();
 				const storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
@@ -349,12 +347,7 @@ VALUES
 				console.log(decoded[0].toString('hex'));
 				console.log(value);
 
-				await this.addState(contractId, storage.blockByMhKey.key, state, value);
-				// const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
-
-				// return getConnection().transaction(async (entityManager) => {
-				// 	// save copy
-				// });
+				await this.addState(contract.contractId, storage.blockByMhKey.key, state, value);
 			}
 		}
 	}
@@ -401,7 +394,6 @@ VALUES
 		for (const headerId of notSyncedIds) {
 			const header = await graphqlService.ethHeaderCidById(headerId);
 			await dataService.processHeader(header.ethHeaderCidById);
-			
 		}
 
 		return notSyncedIds;

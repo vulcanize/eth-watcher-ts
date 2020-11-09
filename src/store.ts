@@ -48,6 +48,10 @@ export default class Store {
 		return this.contracts;
 	}
 
+	public getContractByAddressHash(addressHash: string): Contract {
+		return (this.contracts || []).find((contract) => contract.addressHash === addressHash);
+	}
+
 	public getEvents(): Event[] {
 		return this.events;
 	}

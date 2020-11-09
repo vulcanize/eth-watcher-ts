@@ -27,4 +27,7 @@ export default class Contract {
 
 	@Column("integer", { name: "starting_block" })
 	startingBlock: number;
+
+	// TODO: add to db
+	addressHash: string;
 }
