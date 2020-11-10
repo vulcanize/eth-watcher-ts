@@ -16,6 +16,7 @@ import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
 import StateCids from '../models/eth/stateCids';
 import State from '../models/contract/state';
 import ApplicationError from '../errors/applicationError';
+import StateProgressRepository from '../repositories/data/stateProgressRepository';
 
 const LIMIT = 1000;
 const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -68,8 +69,6 @@ export default class DataService {
 		}
 
 		return getConnection().transaction(async (entityManager) => {
-
-			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 			const sql = `INSERT INTO ${tableName}
 (event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 VALUES
@@ -83,12 +82,13 @@ VALUES
 				console.log(err);	
 			}
 
+			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addState (contractId: number, mhKey: string, state: State, value: any): Promise<void> {
+	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
 
 		const tableName = DataService._getTableName({
 			contractId,
@@ -109,6 +109,9 @@ VALUES
 				// TODO: throw err
 				console.log(err);	
 			}
+
+			const stateProgressRepository: StateProgressRepository = entityManager.getCustomRepository(StateProgressRepository);
+			await stateProgressRepository.add(contractId, state.stateId, blockNumber);
 		});
 	}
 
@@ -276,7 +279,7 @@ VALUES
 		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
 
 		for (const blockNumber of notSyncedBlocks) {
-			const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
+			const header = await graphqlService.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
 
 			if (!header) {
 				console.warn(`No header for ${blockNumber} block`);
@@ -347,9 +350,74 @@ VALUES
 				console.log(decoded[0].toString('hex'));
 				console.log(value);
 
-				await this.addState(contract.contractId, storage.blockByMhKey.key, state, value);
+				await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
 			}
 		}
+	}
+
+	public static async syncStatesForContract({
+		graphqlService, stateProgressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		state: State,
+		contract: Contract,
+	): Promise<void> {
+		const startingBlock = contract.startingBlock;
+		const maxBlock = await stateProgressRepository.getMaxBlockNumber(contract.contractId, state.stateId);
+		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+
+		for (let page = 1; page <= maxPage; page++) {
+			await DataService._syncStatesForContractPage(
+				{
+					graphqlService,
+					stateProgressRepository,
+					dataService
+				},
+				state,
+				contract,
+				startingBlock,
+				maxBlock,
+				page,
+			)
+		}
+	}
+
+	private static async _syncStatesForContractPage({
+		graphqlService, stateProgressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		state: State,
+		contract: Contract,
+		startingBlock: number,
+		maxBlock: number,
+		page: number,
+		limit: number = LIMIT,
+	): Promise<number[]> {
+		const progresses = await stateProgressRepository.findSyncedBlocks(contract.contractId, state.stateId, (page - 1) * limit, limit);
+
+		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const start = startingBlock + (page -1) * limit; // start block for current page
+
+		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedBlocks = progresses.map((p) => p.blockNumber);
+		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
+
+		console.log('notSyncedBlocks', notSyncedBlocks);
+
+		for (const blockNumber of notSyncedBlocks) {
+			const header = await graphqlService.ethHeaderCidWithStateByBlockNumber(blockNumber);
+
+			if (!header) {
+				console.warn(`No header for ${blockNumber} block`);
+				continue;
+			}
+
+			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
+				for (const state of ethHeader.stateCidsByHeaderId.nodes) {  
+					await dataService.processState(state);
+				}
+			}
+		}
+
+		return notSyncedBlocks;
 	}
 
 	public static async syncHeaders({
