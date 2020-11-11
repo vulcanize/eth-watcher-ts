@@ -17,6 +17,8 @@ import StateCids from '../models/eth/stateCids';
 import State from '../models/contract/state';
 import ApplicationError from '../errors/applicationError';
 import StateProgressRepository from '../repositories/data/stateProgressRepository';
+import Address from '../models/data/address';
+import AddressRepository from '../repositories/data/addressRepository';
 
 const LIMIT = 1000;
 const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -329,6 +331,8 @@ VALUES
 			return;
 		}
 
+		console.log(JSON.stringify(relatedNode, null, 2));
+
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -465,6 +469,20 @@ VALUES
 		}
 
 		return notSyncedIds;
+	}
+
+	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
+		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
+		for (const contract of contracts) {
+			let address: Address = Store.getStore().getAddress(contract.address);
+			if (address) {
+				// do nothing
+				continue;
+			}
+
+			address = await addressRepository.add(contract.address);
+			Store.getStore().addAddress(address);
+		}
 	}
 
 	private static _getTableName({ contractId, type = 'event', id}): string {

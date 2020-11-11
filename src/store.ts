@@ -2,6 +2,7 @@ import Contract from "./models/contract/contract";
 import Event from "./models/contract/event";
 import Method from "./models/contract/method";
 import State from "./models/contract/state";
+import Address from "./models/data/address";
 import ContractService from "./services/contractService";
 import DataService from "./services/dataService";
 import env from './env';
@@ -13,6 +14,7 @@ export default class Store {
 	private events: Event[];
 	private methods: Method[];
 	private states: State[];
+	private addresses: Address[];
 
 	private contractService: ContractService;
 	private dataService: DataService;
@@ -25,6 +27,7 @@ export default class Store {
 		this.events = [];
 		this.methods = [];
 		this.states = [];
+		this.addresses = [];
 	}
 
 	public static getStore(): Store {
@@ -48,8 +51,13 @@ export default class Store {
 		return this.contracts;
 	}
 
-	public getContractByAddressHash(addressHash: string): Contract {
-		return (this.contracts || []).find((contract) => contract.addressHash === addressHash);
+	public getContractByAddressHash(hash: string): Contract {
+		const address = this.getAddressByHash(hash);
+		if (!address) {
+			return null;
+		}
+
+		return (this.contracts || []).find((contract) => contract.address === address.address);
 	}
 
 	public getEvents(): Event[] {
@@ -82,20 +90,39 @@ export default class Store {
 		return (this.states || []).filter((state) => contract.states.includes(state.stateId));
 	}
 
+	public getAddresses(): Address[] {
+		return this.addresses;
+	}
+
+	public getAddress(addressString: string): Address {
+		return (this.addresses || []).find((a) => a.address === addressString);
+	}
+
+	public getAddressByHash(hash: string): Address {
+		return (this.addresses || []).find((a) => a.hash === hash);
+	}
+
+	public addAddress(address: Address): void {
+		this.addresses.push(address);
+	}
+
 	public async syncData(): Promise<void> {
-		[this.contracts, this.events, this.methods, this.states] = await Promise.all([
+		[this.contracts, this.events, this.methods, this.states, this.addresses] = await Promise.all([
 			this.contractService?.loadContracts(),
 			this.contractService?.loadEvents(),
 			this.contractService?.loadMethods(),
 			this.contractService?.loadStates(),
+			this.contractService?.loadAddresses(),
 		])
 
 		await this.dataService.createTables(this.contracts);
+		await this.dataService.prepareAddresses(this.contracts);
 
 		console.log(`Contracts: \t${this.contracts.length}`);
 		console.log(`Events: \t${this.events.length}`);
 		console.log(`Methods: \t${this.methods.length}`);
 		console.log(`States: \t${this.states.length}`);
+		console.log(`Addresses: \t${this.addresses.length}`);
 	}
 
 }
