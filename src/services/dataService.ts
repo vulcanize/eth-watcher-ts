@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, rlp } from 'ethereumjs-util';
+import { keccak256, keccakFromString, rlp } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -19,6 +19,7 @@ import ApplicationError from '../errors/applicationError';
 import StateProgressRepository from '../repositories/data/stateProgressRepository';
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
+import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
 
 const LIMIT = 1000;
 const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -335,26 +336,52 @@ VALUES
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
+			const address = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
+
 			for (const state of states) {
 				const slot = state.slot.toString();
-				const storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
-				console.log('storageLeafKey', storageLeafKey);
+				let storageLeafKey = null ;
+				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 
-				const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
-				console.log('storage', storage);
-				if (!storage) {
-					continue;
+					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
+						const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+						console.log('addressId', addressId);
+						if (!addressId) {
+							continue;
+						}
+
+						const adr = Store.getStore().getAddressById(addressId);
+
+						const adrStr = zero64.substring(0, zero64.length - adr.address.length) + adr.address;
+						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
+						const hash = '0x' + keccak256(Buffer.from(adrStr + slot, 'hex')).toString('hex');
+
+						console.log('hash', hash);
+
+						// TODO: save
+					}
+				} else if (state.type === 'uint') {
+					storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
+					console.log('storageLeafKey', storageLeafKey);
+
+					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
+					console.log('storage', storage);
+					if (!storage) {
+						continue;
+					}
+
+					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+					const decoded: any = rlp.decode(buffer); // eslint-disable-line
+					const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
+
+					console.log(decoded[0].toString('hex'));
+					console.log(value);
+
+					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
 				}
-
-				const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
-				const decoded: any = rlp.decode(buffer); // eslint-disable-line
-				const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
-
-				console.log(decoded[0].toString('hex'));
-				console.log(value);
-
-				await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
 			}
 		}
 	}
@@ -473,15 +500,31 @@ VALUES
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
 		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
 		for (const contract of contracts) {
 			let address: Address = Store.getStore().getAddress(contract.address);
-			if (address) {
-				// do nothing
-				continue;
+			if (!address) {
+				address = await addressRepository.add(contract.address);
+				Store.getStore().addAddress(address);
 			}
 
-			address = await addressRepository.add(contract.address);
-			Store.getStore().addAddress(address);
+			const states = Store.getStore().getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
+
+					const addresses: Address[] = Store.getStore().getAddresses();
+					for (const adr of addresses) {
+						const adrStr = zero64.substring(0, zero64.length - adr.address.length) + adr.address;
+						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
+						const hash = '0x' + keccakFromString(adrStr + slot).toString('hex');
+
+						// TODO: check hash calculation
+						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+					}
+				}
+			}
 		}
 	}
 

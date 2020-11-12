@@ -14,7 +14,7 @@ export default class Store {
 	private events: Event[];
 	private methods: Method[];
 	private states: State[];
-	private addresses: Address[];
+	private addresses: Address[]; // TODO: do not store addresses in memory
 
 	private contractService: ContractService;
 	private dataService: DataService;
@@ -51,6 +51,7 @@ export default class Store {
 		return this.contracts;
 	}
 
+	// TODO: move to repository and make sql request
 	public getContractByAddressHash(hash: string): Contract {
 		const address = this.getAddressByHash(hash);
 		if (!address) {
@@ -92,6 +93,10 @@ export default class Store {
 
 	public getAddresses(): Address[] {
 		return this.addresses;
+	}
+
+	public getAddressById(addressId: number): Address {
+		return (this.addresses || []).find((a) => a.addressId === addressId);
 	}
 
 	public getAddress(addressString: string): Address {
