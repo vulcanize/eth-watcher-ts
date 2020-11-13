@@ -1,4 +1,5 @@
 jest.mock('../store');
+jest.mock('../repositories/data/addressIdSlotIdRepository');
 
 import DataService from './dataService';
 import Event from '../models/contract/event';
@@ -8,7 +9,8 @@ import HeaderCids from '../models/eth/headerCids';
 import TransactionCids from '../models/eth/transactionCids';
 
 //@ts-ignore
-import { mockGetStore, mockGetContractByAddressHash, mockGetStatesByContractId, mockGetContracts } from '../store';
+import { mockGetEventsByContractId, mockGetStore, mockGetContractByAddressHash, mockGetStatesByContractId, mockGetContracts } from '../store';
+import { rlp } from 'ethereumjs-util';
 
 const mockGraphqlService = {
   ethHeaderCidWithTransactionByBlockNumber: () => ({
@@ -261,7 +263,37 @@ describe('processState', function () {
     expect(mockGetContractByAddressHash).toBeCalledTimes(1);
     expect(mockGetContractByAddressHash).toBeCalledWith(stateLeafKey);
     expect(mockGetStatesByContractId).not.toBeCalled();
-  })
+  });
+
+  test('check uint', async function () {
+    dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+      return null
+    });
+
+    const stateLeafKey = "someStateLeafKey";
+    const relatedNode = {
+      stateLeafKey,
+      ethHeaderCidByHeaderId: {
+        blockNumber: 0,
+      },
+      storageCidsByStateId: {
+        nodes: [{
+          storageLeafKey: "0x471ccdcb79bddea38175f8cc115b52365f2c864200fbce48e994511bb9c6006f",
+          blockByMhKey: {
+            data: "c512c2345678",
+          },
+        }]
+      }
+    }
+
+    const stateCids = await dataService.processState(relatedNode);
+
+    expect(mockGetStore).toBeCalledTimes(4);
+    expect(mockGetContractByAddressHash).toBeCalledTimes(2);
+    expect(mockGetContractByAddressHash).toBeCalledWith(stateLeafKey);
+    expect(mockGetStatesByContractId).toBeCalledTimes(1);
+    expect(dataService.addState).toBeCalledTimes(2);
+  });
 });
 
 describe('processEvent', function () {
@@ -312,4 +344,43 @@ describe('processEvent', function () {
     expect(resp2).toEqual(undefined);
   });
 
+  test('check cycle', async function () {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+      return {
+        id: 0,
+      } as HeaderCids;
+    });
+    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {
+      return null
+    });
+    dataService.addEvent = jest.fn().mockImplementation(function (): Promise<void> {
+      return null
+    })
+
+    await dataService.processEvent({
+      ethTransactionCidByTxId: {
+        ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
+      },
+      logContracts: [
+        "address3"
+      ],
+      topic0S: [
+        "0x3655aa002c9e821cc231138d4f8790003402c95dd1c0cfb6378146d16c7ea582"
+      ],
+      blockByMhKey: {
+        data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
+      },
+    });
+
+    expect(dataService.processHeader).toBeCalledTimes(1);
+    expect(dataService.processHeader).toBeCalledWith("0xheaderCidByHeaderId")
+    expect(dataService.processTransaction).toBeCalledTimes(1);
+    expect(dataService.processTransaction).toBeCalledWith({ ethHeaderCidByHeaderId: "0xheaderCidByHeaderId" }, 0);
+    expect(mockGetContracts).toBeCalledTimes(2);
+
+    expect(mockGetEventsByContractId).toBeCalledTimes(1)
+    expect(mockGetEventsByContractId).toBeCalledWith(3)
+
+    expect(dataService.addEvent).toBeCalledTimes(1);
+  });
 });
