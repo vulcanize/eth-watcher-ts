@@ -4,11 +4,12 @@ import Contract from '../models/contract/contract';
 import Event from '../models/contract/event';
 import Method from '../models/contract/method';
 import State from '../models/contract/state';
+import Address from '../models/data/address';
 import ContractRepository from '../repositories/contract/contractRepository';
 import EventRepository from '../repositories/contract/eventRepository';
 import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
-import { keccak256 } from 'ethereumjs-util';
+import AddressRepository from '../repositories/data/addressRepository';
 
 export default class ContractService {
 
@@ -16,13 +17,7 @@ export default class ContractService {
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
 		const contracts = await contractRepository.findAll();
 
-		return contracts.map((c) => {
-			const addressHash = '0x' + keccak256(Buffer.from(c.address.replace('0x', ''), 'hex')).toString('hex');
-			return {
-				addressHash,
-				...c,
-			}
-		});
+		return contracts;
 	}
 
 	public async loadEvents (): Promise<Event[]> {
@@ -42,6 +37,11 @@ export default class ContractService {
 	public async loadStates (): Promise<State[]> {
 		const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		return stateRepository.findAll();
+	}
+
+	public async loadAddresses (): Promise<Address[]> {
+		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
+		return addressRepository.findAll();
 	}
 
 }
