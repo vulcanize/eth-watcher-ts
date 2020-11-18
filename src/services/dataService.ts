@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, keccakFromString, rlp } from 'ethereumjs-util';
+import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -348,20 +348,24 @@ VALUES
 					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
 						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
 						const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
-						console.log('addressId', addressId);
+
 						if (!addressId) {
 							continue;
 						}
 
-						const adr = Store.getStore().getAddressById(addressId);
+						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+						const decoded: any = rlp.decode(buffer); // eslint-disable-line
+						const value = abi.rawDecode([ 'uint' ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
 
-						const adrStr = zero64.substring(0, zero64.length - adr.address.length) + adr.address;
-						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
-						const hash = '0x' + keccak256(Buffer.from(adrStr + slot, 'hex')).toString('hex');
+						console.log(decoded);
+						console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
 
-						console.log('hash', hash);
+						console.log(decoded[0].toString('hex'));
+						console.log(value);
 
-						// TODO: save
+						await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+
+
 					}
 				} else if (state.type === 'uint') {
 					storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
@@ -509,18 +513,20 @@ VALUES
 				Store.getStore().addAddress(address);
 			}
 
+
+
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
 				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
 					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
-
-					const addresses: Address[] = Store.getStore().getAddresses();
+					console.log('contract.address', contract.address);
+					const addresses: Address[] = Store.getStore().getAddresses(); // 100 m
 					for (const adr of addresses) {
-						const adrStr = zero64.substring(0, zero64.length - adr.address.length) + adr.address;
+						const adrStr = (zero64.substring(0, zero64.length - adr.address.length) + adr.address.replace('0x', '0')).toLowerCase();
 						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
-						const hash = '0x' + keccakFromString(adrStr + slot).toString('hex');
+						// TODO: !!! FIX DOULBE keccak !!!
+						const hash = '0x' + keccakFromHexString('0x' + keccakFromHexString('0x' + adrStr + slot).toString('hex')).toString('hex');
 
-						// TODO: check hash calculation
 						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
 					}
 				}
