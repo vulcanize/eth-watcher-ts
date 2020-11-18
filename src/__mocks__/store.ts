@@ -1,0 +1,83 @@
+import Address from 'models/data/address';
+import Contract from '../models/contract/contract';
+
+export const contractsByAddrHash = {
+  "emptyStateLeafKey": null,
+  "someStateLeafKey": {
+    contractId: 1,
+    address: "0xAddress",
+  }
+};
+
+export const eventsByContractId = {
+  1: [
+  ],
+  3: [{
+    name: 'ename'
+  }],
+};
+
+export const statesByContractId = {
+  1: [{
+    slot: "slot1",
+    type: "uint",
+  }, {
+    slot: "slot2",
+    type: "uint",
+  }]
+};
+
+export const mockGetContractByAddressHash = jest.fn().mockImplementation(function (addrHash: string) {
+  return contractsByAddrHash[addrHash];
+});
+
+export const mockGetStatesByContractId = jest.fn().mockImplementation(function (contractId: number) {
+  return statesByContractId[contractId];
+});
+
+export const mockGetContracts = jest.fn().mockImplementation(function (): Contract[] {
+  return [
+    { address: 'address1' } as Contract,
+    { address: 'address2' } as Contract,
+    {
+      address: 'address3',
+      contractId: 3,
+      events: [1],
+      abi: [{
+        name: 'ename',
+        inputs: [],
+      }],
+    } as Contract,
+  ]
+});
+
+export const mockGetEventsByContractId = jest.fn().mockImplementation(function (contractId: number) {
+  return eventsByContractId[contractId];
+});
+
+export const mockGetAddressById = jest.fn().mockImplementation(function (addressId: number): Address {
+  return null;
+});
+
+export const mockGetAddress = jest.fn().mockImplementation(function (addressString: string): Address {
+  return {
+    addressId: 0,
+    address: addressString,
+    hash: ''
+  };
+});
+
+export const mockGetStore = jest.fn().mockImplementation(() => {
+  return {
+    getContractByAddressHash: mockGetContractByAddressHash,
+    getStatesByContractId: mockGetStatesByContractId,
+    getContracts: mockGetContracts,
+    getEventsByContractId: mockGetEventsByContractId,
+    getAddressById: mockGetAddressById,
+    getAddress: mockGetAddress
+  }
+});
+
+export default {
+  getStore: mockGetStore
+};
