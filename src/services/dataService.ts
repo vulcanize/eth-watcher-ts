@@ -22,7 +22,23 @@ import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
 
 const LIMIT = 1000;
-const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
+
+
+const INDEX = [
+	'0000000000000000000000000000000000000000000000000000000000000000', // 0
+	'0000000000000000000000000000000000000000000000000000000000000001',
+	'0000000000000000000000000000000000000000000000000000000000000002',
+	'0000000000000000000000000000000000000000000000000000000000000003',
+	'0000000000000000000000000000000000000000000000000000000000000004',
+	'0000000000000000000000000000000000000000000000000000000000000005',
+	'0000000000000000000000000000000000000000000000000000000000000006',
+	'0000000000000000000000000000000000000000000000000000000000000007',
+	'0000000000000000000000000000000000000000000000000000000000000008',
+	'0000000000000000000000000000000000000000000000000000000000000009',
+	'000000000000000000000000000000000000000000000000000000000000000a', // 10
+	'000000000000000000000000000000000000000000000000000000000000000b', // 11
+	'000000000000000000000000000000000000000000000000000000000000000c', // 12
+];
 
 type ABIInput = {
 	name: string;
@@ -134,13 +150,13 @@ VALUES
 				pgType = 'boolean';
 				break;
 			case 'bytes':
-				pgType = "bytea";
+				pgType = 'bytea';
 				break;
 			// case abi.ArrayTy:
-			// 	pgType = "text[]";
+			// 	pgType = 'text[]';
 			// 	break;
 			default:
-				pgType = "text";
+				pgType = 'text';
 		}
 
 		return pgType;
@@ -340,7 +356,6 @@ VALUES
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 
 			for (const state of states) {
-				const slot = state.slot.toString();
 				let storageLeafKey = null ;
 				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
 					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
@@ -368,7 +383,7 @@ VALUES
 
 					}
 				} else if (state.type === 'uint') {
-					storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
+					storageLeafKey = DataService._getKeyForFixedType(state.slot)
 					console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -520,13 +535,9 @@ VALUES
 				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
 					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
 					console.log('contract.address', contract.address);
-					const addresses: Address[] = Store.getStore().getAddresses(); // 100 m
+					const addresses: Address[] = Store.getStore().getAddresses();
 					for (const adr of addresses) {
-						const adrStr = (zero64.substring(0, zero64.length - adr.address.length) + adr.address.replace('0x', '0')).toLowerCase();
-						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
-						// TODO: !!! FIX DOULBE keccak !!!
-						const hash = '0x' + keccakFromHexString('0x' + keccakFromHexString('0x' + adrStr + slot).toString('hex')).toString('hex');
-
+						const hash = DataService._getKeyForMapping(adr.address, state.slot);
 						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
 					}
 				}
@@ -648,6 +659,31 @@ VALUES
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
 			console.log('create new table', tableName);
 		});
+	}
+
+	private static _getKeyForFixedType(slot: number): string {
+		if (!INDEX[slot]) {
+			return null;
+		}
+
+		return '0x' + keccak256(Buffer.from(INDEX[slot], 'hex')).toString('hex');
+	}
+
+	private static _getKeyForMapping(address: string, slot: number, withHotFix = true): string {
+		if (!INDEX[slot]) {
+			return null;
+		}
+
+		const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
+		const adrStr = (zero64.substring(0, zero64.length - address.length) + address.replace('0x', '0')).toLowerCase();
+
+		const hash = '0x' + keccakFromHexString('0x' + adrStr + INDEX[slot]).toString('hex');
+		if (!withHotFix) {
+			return hash;
+		}
+
+		// TODO: !!! REMOVE HOT-FIX !!!
+		return '0x' + keccakFromHexString(hash).toString('hex');
 	}
 
 }
