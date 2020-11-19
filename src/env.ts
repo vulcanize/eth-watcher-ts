@@ -74,6 +74,9 @@ export default envalid.cleanEnv(
 		ENABLE_HEADER_WATCHER: envalid.bool({
 			default: tomlConfig?.watcher?.header
 		}),
+		ENABLE_STORAGE_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.storage
+		}),		
 
 	},
 	{ strict: true }

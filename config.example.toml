@@ -19,5 +19,6 @@
     uri = "http://localhost:5000"
 
 [watcher]
-    event = true
-    header =true
+    event   = true
+    header  = true
+    storage = true

@@ -18,7 +18,7 @@ export default class GraphqlRepository {
 		this.graphqlClient = new GraphqlClient();
 	}
 
-	public ethHeaderCidByBlockNumber(blockNumber: string | number): Promise<unknown> {
+	public ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<unknown> {
 		return this.graphqlClient.query(`
 			query MyQuery {
 				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
@@ -45,6 +45,46 @@ export default class GraphqlRepository {
 											blockNumber
 										}
 									}
+								}
+							}
+						}
+					}
+				}
+			}
+		`);
+	}
+
+	public ethHeaderCidWithStateByBlockNumber(blockNumber: string | number): Promise<unknown> {
+		return this.graphqlClient.query(`
+			query MyQuery {
+				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
+					nodes {
+						stateCidsByHeaderId {
+							nodes {
+								id
+								blockByMhKey {
+									data
+									key
+								}
+								stateLeafKey
+								statePath
+								mhKey
+								headerId
+								storageCidsByStateId {
+									nodes {
+										storageLeafKey
+										storagePath
+										mhKey
+										id
+										stateId
+										blockByMhKey {
+											data
+											key
+										}
+									}
+								}
+								ethHeaderCidByHeaderId {
+									blockNumber
 								}
 							}
 						}
@@ -170,5 +210,45 @@ export default class GraphqlRepository {
 			}
 		`, onNext);
 	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public subscriptionStateCids(onNext: (value: any) => void): Promise<void> {
+		return this.graphqlClient.subscribe(`
+			subscription MySubscription {
+				listen(topic: "state_cids") {
+					relatedNode {
+					... on StateCid {
+						id
+						blockByMhKey {
+							data
+							key
+						}
+						stateLeafKey
+						statePath
+						mhKey
+						headerId
+						storageCidsByStateId {
+							nodes {
+								storageLeafKey
+								storagePath
+								mhKey
+								id
+								stateId
+								blockByMhKey {
+									data
+									key
+								}
+							}
+						}
+						ethHeaderCidByHeaderId {
+							blockNumber
+						}
+					}
+					}
+				}
+			}
+		`, onNext);
+	}
+
 }
 

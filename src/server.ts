@@ -30,6 +30,12 @@ import GraphqlService from './services/graphqlService';
 			console.info('Header watcher is not enabled');
 		}
 
+		if (env.ENABLE_STORAGE_WATCHER) {
+			graphqlService.subscriptionStateCids(); // async
+		} else {
+			console.info('Storage watcher is not enabled');
+		}
+
 		if (env.HTTP_ENABLE) {
 			createServer(app.app).listen(env.HTTP_PORT, env.HTTP_ADDR,() =>
 				console.info(`Http server running on port ${env.HTTP_ADDR}:${env.HTTP_PORT}`)

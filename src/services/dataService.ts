@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, rlp } from 'ethereumjs-util'
+import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -13,8 +13,16 @@ import HeaderCids from '../models/eth/headerCids';
 import TransactionCids from '../models/eth/transactionCids';
 import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
 import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
+import StateCids from '../models/eth/stateCids';
+import State from '../models/contract/state';
+import ApplicationError from '../errors/applicationError';
+import StateProgressRepository from '../repositories/data/stateProgressRepository';
+import Address from '../models/data/address';
+import AddressRepository from '../repositories/data/addressRepository';
+import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
 
 const LIMIT = 1000;
+const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
 
 type ABIInput = {
 	name: string;
@@ -40,7 +48,12 @@ export default class DataService {
 		for (const contract of contracts) {
 			const events: Event[] = Store.getStore().getEventsByContractId(contract.contractId);
 			for (const event of events) {
-				await this._createTable(contract, event)
+				await this._createEventTable(contract, event)
+			}
+
+			const states: State[] = Store.getStore().getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				await this._createStateTable(contract, state)
 			}
 		}
 	}
@@ -48,15 +61,17 @@ export default class DataService {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
 
-		const tableName = DataService._getTableName(contractId, eventId);
+		const tableName = DataService._getTableName({
+			contractId,
+			type: 'event',
+			id: eventId
+		});
 
 		if (!data) {
 			return;
 		}
 
 		return getConnection().transaction(async (entityManager) => {
-
-			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 			const sql = `INSERT INTO ${tableName}
 (event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
 VALUES
@@ -70,7 +85,36 @@ VALUES
 				console.log(err);	
 			}
 
+			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 			await progressRepository.add(contractId, eventId, blockNumber);
+		});
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+
+		const tableName = DataService._getTableName({
+			contractId,
+			type: 'state',
+			id: state.stateId,
+		});
+
+		return getConnection().transaction(async (entityManager) => {
+			const sql = `INSERT INTO ${tableName}
+(state_id, contract_id, mh_key, slot_${state.slot})
+VALUES
+(${state.stateId}, ${contractId}, '${mhKey}', '${value}');`;
+
+			console.log(sql);
+
+			const [err] = await to(entityManager.queryRunner.query(sql));
+			if (err) {
+				// TODO: throw err
+				console.log(err);	
+			}
+
+			const stateProgressRepository: StateProgressRepository = entityManager.getCustomRepository(StateProgressRepository);
+			await stateProgressRepository.add(contractId, state.stateId, blockNumber);
 		});
 	}
 
@@ -238,7 +282,7 @@ VALUES
 		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
 
 		for (const blockNumber of notSyncedBlocks) {
-			const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
+			const header = await graphqlService.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
 
 			if (!header) {
 				console.warn(`No header for ${blockNumber} block`);
@@ -280,6 +324,135 @@ VALUES
 
 			return header;
 		});
+	}
+
+	public async processState(relatedNode): Promise<StateCids> {
+
+		if (!relatedNode || !relatedNode.stateLeafKey) {
+			return;
+		}
+
+		console.log(JSON.stringify(relatedNode, null, 2));
+
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
+		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
+			const address = Store.getStore().getAddress(contract.address);
+			const states = Store.getStore().getStatesByContractId(contract.contractId);
+
+			for (const state of states) {
+				const slot = state.slot.toString();
+				let storageLeafKey = null ;
+				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
+					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
+						const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+
+						if (!addressId) {
+							continue;
+						}
+
+						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+						const decoded: any = rlp.decode(buffer); // eslint-disable-line
+						const value = abi.rawDecode([ 'uint' ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+						console.log(decoded);
+						console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+
+						console.log(decoded[0].toString('hex'));
+						console.log(value);
+
+						await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+
+
+					}
+				} else if (state.type === 'uint') {
+					storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
+					console.log('storageLeafKey', storageLeafKey);
+
+					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
+					console.log('storage', storage);
+					if (!storage) {
+						continue;
+					}
+
+					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+					const decoded: any = rlp.decode(buffer); // eslint-disable-line
+					const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
+
+					console.log(decoded[0].toString('hex'));
+					console.log(value);
+
+					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+				}
+			}
+		}
+	}
+
+	public static async syncStatesForContract({
+		graphqlService, stateProgressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		state: State,
+		contract: Contract,
+	): Promise<void> {
+		const startingBlock = contract.startingBlock;
+		const maxBlock = await stateProgressRepository.getMaxBlockNumber(contract.contractId, state.stateId);
+		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+
+		for (let page = 1; page <= maxPage; page++) {
+			await DataService._syncStatesForContractPage(
+				{
+					graphqlService,
+					stateProgressRepository,
+					dataService
+				},
+				state,
+				contract,
+				startingBlock,
+				maxBlock,
+				page,
+			)
+		}
+	}
+
+	private static async _syncStatesForContractPage({
+		graphqlService, stateProgressRepository, dataService
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		state: State,
+		contract: Contract,
+		startingBlock: number,
+		maxBlock: number,
+		page: number,
+		limit: number = LIMIT,
+	): Promise<number[]> {
+		const progresses = await stateProgressRepository.findSyncedBlocks(contract.contractId, state.stateId, (page - 1) * limit, limit);
+
+		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const start = startingBlock + (page -1) * limit; // start block for current page
+
+		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedBlocks = progresses.map((p) => p.blockNumber);
+		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
+
+		console.log('notSyncedBlocks', notSyncedBlocks);
+
+		for (const blockNumber of notSyncedBlocks) {
+			const header = await graphqlService.ethHeaderCidWithStateByBlockNumber(blockNumber);
+
+			if (!header) {
+				console.warn(`No header for ${blockNumber} block`);
+				continue;
+			}
+
+			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
+				for (const state of ethHeader.stateCidsByHeaderId.nodes) {  
+					await dataService.processState(state);
+				}
+			}
+		}
+
+		return notSyncedBlocks;
 	}
 
 	public static async syncHeaders({
@@ -324,18 +497,67 @@ VALUES
 		for (const headerId of notSyncedIds) {
 			const header = await graphqlService.ethHeaderCidById(headerId);
 			await dataService.processHeader(header.ethHeaderCidById);
-			
 		}
 
 		return notSyncedIds;
 	}
 
-	private static _getTableName(contractId: number, eventId: number): string {
-		return `data.contract_id_${contractId}_event_id_${eventId}`;
+	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
+		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
+		for (const contract of contracts) {
+			let address: Address = Store.getStore().getAddress(contract.address);
+			if (!address) {
+				address = await addressRepository.add(contract.address);
+				Store.getStore().addAddress(address);
+			}
+
+
+
+			const states = Store.getStore().getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
+					console.log('contract.address', contract.address);
+					const addresses: Address[] = Store.getStore().getAddresses(); // 100 m
+					for (const adr of addresses) {
+						const adrStr = (zero64.substring(0, zero64.length - adr.address.length) + adr.address.replace('0x', '0')).toLowerCase();
+						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
+						// TODO: !!! FIX DOULBE keccak !!!
+						const hash = '0x' + keccakFromHexString('0x' + keccakFromHexString('0x' + adrStr + slot).toString('hex')).toString('hex');
+
+						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+					}
+				}
+			}
+		}
 	}
 
-	private static _getTableOptions(contract: Contract, event: Event): TableOptions {
-		const tableName = this._getTableName(contract.contractId, event.eventId);
+	private static _getTableName({ contractId, type = 'event', id}): string {
+		return `data.contract_id_${contractId}_${type}_id_${id}`;
+	}
+
+	private static _getTableOptions(contract: Contract, { event, state }: { event?: Event; state?: State }): TableOptions {
+		let tableName;
+		
+		if (!event && !state) {
+			throw new ApplicationError('Bad params');
+		}
+
+		if (event) {
+			tableName = this._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId,
+			});
+		} else if (state) {
+			tableName = this._getTableName({
+				contractId: contract.contractId,
+				type: 'state',
+				id: state.stateId,
+			});
+		}
 
 		const tableOptions: TableOptions = {
 				name: tableName,
@@ -346,9 +568,6 @@ VALUES
 						isPrimary: true,
 						isGenerated: true,
 						generationStrategy: 'increment'
-					},{
-						name: 'event_id',
-						type: 'integer',
 					}, {
 						name: 'contract_id',
 						type: 'integer',
@@ -359,21 +578,45 @@ VALUES
 				]
 			};
 
-			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
-			data.forEach((line) => {
+			if (event) {
 				tableOptions.columns.push({
-					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
+					name: 'event_id',
+					type: 'integer',
+				});
+
+				const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+				data.forEach((line) => {
+					tableOptions.columns.push({
+						name: `data_${line.name.toLowerCase().trim()}`,
+						type: this._getPgType(line.internalType),
+						isNullable: true,
+					});
+				});
+			}
+
+			if (state) {
+				tableOptions.columns.push({
+					name: 'state_id',
+					type: 'integer',
+				});
+				
+				tableOptions.columns.push({
+					name: `slot_${state.slot}`,
+					type: this._getPgType(state.type),
 					isNullable: true,
 				});
-			});
+			}
 
 			return tableOptions;
 	}
 
-	private async _createTable(contract: Contract, event: Event): Promise<void> {
+	private async _createEventTable(contract: Contract, event: Event): Promise<void> {
 		return getConnection().transaction(async (entityManager) => {
-			const tableName = DataService._getTableName(contract.contractId, event.eventId);
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId
+			});
 			const table = await entityManager.queryRunner.getTable(tableName);
 
 			if (table) {
@@ -381,7 +624,27 @@ VALUES
 				return;
 			}
 
-			const tableOptions = DataService._getTableOptions(contract, event);
+			const tableOptions = DataService._getTableOptions(contract, { event });
+			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			console.log('create new table', tableName);
+		});
+	}
+
+	private async _createStateTable(contract: Contract, state: State): Promise<void> {
+		return getConnection().transaction(async (entityManager) => {
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'state',
+				id: state.stateId,
+			});
+			const table = await entityManager.queryRunner.getTable(tableName);
+
+			if (table) {
+				console.log(`Table ${tableName} already exists`);
+				return;
+			}
+
+			const tableOptions = DataService._getTableOptions(contract, { state });
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
 			console.log('create new table', tableName);
 		});
