@@ -1,119 +1,76 @@
-import {
-  parse as parseRawContract,
-  SourceUnit, ContractDefinition, StateVariableDeclaration, StructDefinition,
-  VariableDeclaration, ElementaryTypeName, UserDefinedTypeName, Mapping, ArrayTypeName,
-} from 'solidity-parser-diligence';
+import { parse, SourceUnit, ContractDefinition, StateVariableDeclaration, StructDefinition, TypeName } from 'solidity-parser-diligence';
 
-export const errUnknownBaseTypeName = new Error('unknown typeName.baseTypeName.type');
-export const errUnknownValueType = new Error('unknown typeName.valueType');
-export const errUnknownTypeName = new Error('unknown typeName.type');
-export const errUnknownStruct = new Error('unknown struct');
 export const errUnknownVariable = new Error('unknown variable');
 
-export type Types = { name: string; type: string; }[];
+export type Type = 'simple' | 'array' | 'mapping' | 'struct';
 
-function parseElementaryTypeName(name: string, typeName: ElementaryTypeName, level: number = 0): Types {
-  return [{ name, type: typeName.name }];
+export type BaseStructure = {
+  name: string;
+  type: Type;
 }
 
-function parseArrayTypeName(typeName: ArrayTypeName, structs: StructDefinition[], level: number = 0): Types {
-  let fields: Types = [{ name: `key${level}`, type: 'uint' }];
+export type SimpleStructure = BaseStructure & {
+  type: 'simple';
+  kind: string;
+}
 
-  switch (typeName.baseTypeName.type) {
+export type ArrayStructure = BaseStructure & {
+  type: 'array';
+  kind: Structure;
+}
+
+export type MappingStructure = BaseStructure & {
+  type: 'mapping';
+  key: string;
+  value: Structure;
+}
+
+export type CustomStructure = BaseStructure & {
+  type: 'struct';
+  fields: Structure[];
+}
+
+export type Structure = SimpleStructure | ArrayStructure | MappingStructure | CustomStructure;
+
+export type Field = {
+  name: string;
+  type: string;
+}
+
+function parseStructure(name: string, typeName: TypeName, structs: StructDefinition[], level: number = 0): Structure {
+  switch (typeName.type) {
     case 'ElementaryTypeName':
-      return fields.concat(parseElementaryTypeName(`value${level}`, typeName.baseTypeName));
+      return { name, type: 'simple', kind: typeName.name } as SimpleStructure;
     case 'ArrayTypeName':
-      return fields.concat(parseArrayTypeName(typeName.baseTypeName, structs, level + 1));
+      return {
+        name,
+        type: 'array',
+        kind: parseStructure(`value${level}`, typeName.baseTypeName, structs, level + 1),
+      } as ArrayStructure;
     case 'Mapping':
-      return fields.concat(parseMapping(typeName.baseTypeName, structs, level + 1));
+      return {
+        name,
+        type: 'mapping',
+        key: typeName.keyType.name,
+        value: parseStructure(`value${level}`, typeName.valueType, structs, level + 1),
+      } as MappingStructure;
     case 'UserDefinedTypeName':
-      return fields.concat(parseUserDefinedTypeName(typeName.baseTypeName, structs, level + 1));
+      const members = structs.find(s => s.name == typeName.namePath)?.members;
+      if (!members) {
+        return null;
+      }
+      return {
+        name,
+        type: 'struct',
+        fields: members.map(m => parseStructure(m.name, m.typeName, structs, level + 1))
+      } as CustomStructure
   }
-
-  throw errUnknownBaseTypeName;
-}
-
-function parseMapping(typeName: Mapping, structs: StructDefinition[], level: number = 0): Types {
-  let fields: Types = parseElementaryTypeName(`key${level}`, typeName.keyType);
-
-  switch (typeName.valueType.type) {
-    case 'ElementaryTypeName':
-      return fields.concat(parseElementaryTypeName(`value${level}`, typeName.valueType));
-    case 'ArrayTypeName':
-      return fields.concat(parseArrayTypeName(typeName.valueType, structs, level + 1));
-    case 'Mapping':
-      return fields.concat(parseMapping(typeName.valueType, structs, level + 1));
-    case 'UserDefinedTypeName':
-      return fields.concat(parseUserDefinedTypeName(typeName.valueType, structs, level + 1));
-  }
-
-  throw errUnknownValueType;
-}
-
-function parseUserDefinedTypeName(typeName: UserDefinedTypeName, structs: StructDefinition[], level: number = 0): Types {
-  const tstruct = structs.find(s => s.name == typeName.namePath);
-  if (!tstruct) {
-    throw errUnknownStruct;
-  }
-  const fields: Types = []
-  for (const variable of tstruct.members) {
-    fields.push(...parseVariable(variable, structs));
-  }
-  return fields;
-}
-
-function parseVariable(variable: VariableDeclaration, structs: StructDefinition[] = [], level: number = 0): Types {
-  switch (variable.typeName.type) {
-    case 'ElementaryTypeName':
-      return parseElementaryTypeName(variable.name, variable.typeName);
-    case 'ArrayTypeName':
-      return parseArrayTypeName(variable.typeName, structs);
-    case 'Mapping':
-      return parseMapping(variable.typeName, structs);
-    case 'UserDefinedTypeName':
-      return parseUserDefinedTypeName(variable.typeName, structs);
-  }
-
-  throw errUnknownTypeName;
 }
 
 /**
- * Parse variable from contract
+ * Parse structure from list of variables and types
  * ```typescript
- * parseContract(`
- *  contract SomeContract {
- *    mapping(address => mapping(uint => Checkpoint)) public checkpoint;
- *    struct Checkpoint {
- *      uint32 fromBlock;
- *      SomeVotes votes;
- *    }
- *    struct SomeVotes {
- *      uint96 votes;
- *    }
- *  }
- * `, checkpoint)
- * ```
- * @param contract any valid contract
- * @param name variable name
- */
-export function parseContract(contract: string, name: string): Types {
-  const source = parseRawContract(contract, {}) as SourceUnit;
-  const nodes = (source?.children[0] as ContractDefinition).subNodes;
-  const states = nodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
-
-  const variable = states.find(n => n?.variables?.some(v => v.name == name))?.variables[0];
-  if (!variable) {
-    throw errUnknownVariable;
-  }
-
-  const structs = nodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
-  return parseVariable(variable, structs);
-}
-
-/**
- * Parse variable from list of variables and types
- * ```typescript
- *  parse(`
+ *  toStructure(`
  *    mapping(address => mapping(uint => Checkpoint)) public checkpoint;
  *    struct Checkpoint {
  *      uint32 fromBlock;
@@ -127,11 +84,67 @@ export function parseContract(contract: string, name: string): Types {
  * @param vars list variables and types
  * @param name variable name
  */
-export function parse(vars: string, name: string): Types {
-  if (!vars || !vars.trim()) {
-    return [];
+export function toStructure(vars: string, name: string): Structure {
+  const source = parse(`contract wrapper{ ${vars} }`, {}) as SourceUnit;
+  const anodes = (source.children[0] as ContractDefinition).subNodes;
+
+  const states = anodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
+  const structs = anodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
+
+  const variable = states.find(s => s?.variables?.some(v => v.name == name))?.variables[0];
+  if (!variable) {
+    throw errUnknownVariable;
   }
 
-  return parseContract(`contract wrapper{ ${vars} }`, name);
+  return parseStructure(name, variable.typeName, structs);
 }
 
+/**
+ * Сonverts structure to fields
+ * ```typescript
+ * const structure: SimpleStructure = {
+ *   kind: 'string'
+ *   name: 'someName'
+ *   type: 'simple'
+ * }
+ * toFields(structure)
+ * ```
+ * @param obj
+ */
+export function toFields(obj: Structure): Field[] {
+  const stack: Structure[] = [obj];
+  const fields: Field[] = [];
+  let level: number = 0;
+  while (stack.length > 0) {
+    const obj = stack.pop();
+    switch (obj.type) {
+      case 'simple':
+        fields.push({
+          name: obj.name,
+          type: obj.kind,
+        });
+        break;
+      case 'array':
+        fields.push({
+          name: `key${level}`,
+          type: 'uint',
+        });
+        stack.push(obj.kind)
+        break;
+      case 'mapping':
+        fields.push({
+          name: `key${level}`,
+          type: obj.key,
+        });
+        stack.push(obj.value);
+        break;
+      case 'struct':
+        for (const field of obj.fields) {
+          stack.push(field);
+        }
+        break;
+    }
+    level++;
+  }
+  return fields;
+}
