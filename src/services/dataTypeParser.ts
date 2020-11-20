@@ -191,17 +191,6 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
         });
 
         return [tableOptions, ...toTableOptions(tableName, obj.value, `${obj.name}_id`)];
-        
-        // if (obj.value.type === 'simple') {
-        //   tableOptions.columns.push({
-        //     name: obj.value.name,
-        //     type: DataService._getPgType(obj.value.kind),
-        //     isNullable: true,
-        //   });
-        // } else {
-        //   // TODO: make a recursive function
-        // }
-
       }
       
       if (obj.type === 'array') {
@@ -216,14 +205,26 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           return [tableOptions];
         } else if (obj.kind.type === 'mapping') {
           return [tableOptions, ...toTableOptions(tableName, obj.kind.value, `${obj.kind.name}_id`)];
+        } else if (obj.kind.type === 'struct') {
+          return [tableOptions, ...toTableOptions(tableName, obj.kind, `${obj.name}_id`)];
         }
       }
       
       if (obj.type === 'struct') {
-        // TODO:
-      } else {
-        throw new Error('Wrong sctructure type');
+        for(const field of obj.fields) {
+          if (field.type === 'simple') {
+            tableOptions.columns.push({
+              name: field.name,
+              type: DataService._getPgType(field.kind),
+              isNullable: true,
+            });
+          } else {
+            // TODO
+          }
+        }
+
+        return [tableOptions];
       }
 
-      return null;
+      throw new Error('Wrong sctructure type');
 }

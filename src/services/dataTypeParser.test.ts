@@ -242,7 +242,7 @@ describe('dataTypeParser', function () {
   });
 })
 
-describe.only('toTableOptions', function () {
+describe('toTableOptions', function () {
   test('elementary types', function () {
     const st1 = {
       "type": "simple",
@@ -452,5 +452,246 @@ describe.only('toTableOptions', function () {
           "type": "numeric",
         }],
     }).toStrictEqual(tableOptions2[2]);
+  });
+
+  test('user defined types', function () {
+    /*
+      Checkpoint checkpoint;
+      struct Checkpoint {
+        uint32 fromBlock;
+        uint96 votes;
+      }
+    */
+    const st1 = {
+      "fields": [
+        { "kind": "uint32", "name": "fromBlock", "type": "simple" },
+        { "kind": "uint96", "name": "votes", "type": "simple" }
+      ],
+      "name": "checkpoint",
+      "type": "struct"
+    } as Structure;
+
+    const tableOptions1 = toTableOptions('test', st1);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "fromBlock",
+          "type": "numeric",
+          "isNullable": true,
+        },{
+          "name": "votes",
+          "type": "numeric",
+          "isNullable": true,
+        }],
+    }).toStrictEqual(tableOptions1[0]);
+
+    /*
+      Checkpoint[] public checkpoint;
+      struct Checkpoint {
+        uint32 fromBlock;
+        uint96 votes;
+      }
+    */
+    const st2 = {
+      "kind": {
+        "fields": [
+          { "kind": "uint32", "name": "fromBlock", "type": "simple" },
+          { "kind": "uint96", "name": "votes", "type": "simple" }
+        ],
+        "name": "value0",
+        "type": "struct"
+      },
+      "name": "checkpoint",
+      "type": "array"
+    } as Structure;
+
+    const tableOptions2 = toTableOptions('test', st2);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }],
+    }).toStrictEqual(tableOptions2[0]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "checkpoint_id",
+          "type": "integer",
+          "isNullable": false
+        }, {
+          "name": "fromBlock",
+          "type": "numeric",
+          "isNullable": true,
+        },{
+          "name": "votes",
+          "type": "numeric",
+          "isNullable": true,
+        }],
+    }).toStrictEqual(tableOptions2[1]);
+
+    /*
+      mapping(address => Checkpoint) public checkpoint;
+      struct Checkpoint {
+        uint32 fromBlock;
+        uint96 votes;
+      }
+    */
+    const st3 = {
+      "key": "address",
+      "name": "checkpoint",
+      "type": "mapping",
+      "value": {
+        "fields": [
+          { "kind": "uint32", "name": "fromBlock", "type": "simple" },
+          { "kind": "uint96", "name": "votes", "type": "simple" }
+        ],
+        "name": "value0",
+        "type": "struct"
+      }
+    } as Structure;
+
+    const tableOptions3 = toTableOptions('test', st3);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": true,
+          "name": "checkpoint",
+          "type": "character varying(66)",
+        }],
+    }).toStrictEqual(tableOptions3[0]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "checkpoint_id",
+          "type": "integer",
+          "isNullable": false
+        }, {
+          "name": "fromBlock",
+          "type": "numeric",
+          "isNullable": true,
+        },{
+          "name": "votes",
+          "type": "numeric",
+          "isNullable": true,
+        }],
+    }).toStrictEqual(tableOptions3[1]);
+
+    /*
+      mapping(address => mapping(uint => Checkpoint)) public checkpoint;
+      struct Checkpoint {
+        uint32 fromBlock;
+        uint96 votes;
+      }
+    */
+    const st4 = {
+      "key": "address",
+      "name": "checkpoint",
+      "type": "mapping",
+      "value": {
+        "key": "uint",
+        "name": "value0",
+        "type": "mapping",
+        "value": {
+          "fields": [
+            { "kind": "uint32", "name": "fromBlock", "type": "simple" },
+            { "kind": "uint96", "name": "votes", "type": "simple" }
+          ],
+          "name": "value1",
+          "type": "struct"
+        }
+      }
+    } as Structure;
+
+    const tableOptions4 = toTableOptions('test', st4);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": true,
+          "name": "checkpoint",
+          "type": "character varying(66)",
+        }],
+    }).toStrictEqual(tableOptions4[0]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "checkpoint_id",
+          "type": "integer",
+          "isNullable": false
+        }, {
+          "name": "value0",
+          "type": "numeric",
+          "isNullable": true,
+        }],
+    }).toStrictEqual(tableOptions4[1]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "value0_id",
+          "type": "integer",
+          "isNullable": false
+        }, {
+          "name": "fromBlock",
+          "type": "numeric",
+          "isNullable": true,
+        }, {
+          "name": "votes",
+          "type": "numeric",
+          "isNullable": true,
+        }],
+    }).toStrictEqual(tableOptions4[2]);
   });
 });
