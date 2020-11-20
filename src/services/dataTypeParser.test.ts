@@ -1,4 +1,4 @@
-import { toStructure, toFields, } from './dataTypeParser';
+import { toStructure, toFields, toTableOptions, Structure } from './dataTypeParser';
 
 describe('dataTypeParser', function () {
   test('elementary types', function () {
@@ -43,8 +43,7 @@ describe('dataTypeParser', function () {
           "name": "value1",
           "type": "simple"
         },
-        "name":
-          "value0",
+        "name": "value0",
         "type": "array"
       },
       "name": "names",
@@ -84,8 +83,7 @@ describe('dataTypeParser', function () {
         "name": "value0",
         "type": "mapping",
         "value": {
-          "kind":
-            "uint96",
+          "kind": "uint96",
           "name": "value1",
           "type": "simple"
         }
@@ -243,3 +241,216 @@ describe('dataTypeParser', function () {
     ]);
   });
 })
+
+describe.only('toTableOptions', function () {
+  test('elementary types', function () {
+    const st1 = {
+      "type": "simple",
+      "name": "name",
+      "kind": "string",
+    } as Structure;
+    const tableOptions1 = toTableOptions('test', st1);
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": true,
+          "name": "name",
+          "type": "text",
+        }],
+    }).toStrictEqual(tableOptions1[0]);
+
+    const st2 = {
+      "type": "simple",
+      "name": "decimals",
+      "kind": "uint8",
+    } as Structure;
+    const tableOptions2 = toTableOptions('test', st2);
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": true,
+          "name": "decimals",
+          "type": "numeric",
+        }],
+    }).toStrictEqual(tableOptions2[0]);
+  });
+
+  test('array types', function () {
+    const st1 = {
+      "type": "array",
+      "name": "names",
+      "kind": {
+        "kind": "string",
+        "name": "value0",
+        "type": "simple"
+      }
+    } as Structure;
+    const tableOptions1 = toTableOptions('test', st1);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isArray": true,
+          "isNullable": true,
+          "name": "value0",
+          "type": "text",
+        }],
+    }).toStrictEqual(tableOptions1[0]);
+  });
+
+  test('mapping types', function () {
+    // mapping (address => uint96) internal balances;
+    const st1 = {
+      "key": "address",
+      "name": "balances",
+      "type": "mapping",
+      "value": {
+        "kind": "uint96",
+        "name": "value0",
+        "type": "simple"
+      }
+    } as Structure;
+
+    const tableOptions1 = toTableOptions('test', st1);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": true,
+          "name": "balances",
+          "type": "character varying(66)",
+        }],
+    }).toStrictEqual(tableOptions1[0]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "isNullable": false,
+          "name": "balances_id",
+          "type": "integer",
+        },{
+          "isNullable": true,
+          "name": "value0",
+          "type": "numeric",
+        }],
+    }).toStrictEqual(tableOptions1[1]);
+
+    // mapping (address => mapping (address => uint96)) internal allowances;
+
+    // Table 1
+    // id   address
+    // 100  0xabc
+    // 200  0xbde
+
+    // Table 2
+    // id   table1.id   address 
+    // 1000 100         0x123
+    // 2000 100         0x567
+
+    // Table 3
+    // id   table2.id   uint
+    // 1    1000        50
+    // 2    2000        60
+
+    const st2 = {
+        "key": "address",
+        "name": "allowances",
+        "type": "mapping",
+        "value": {
+          "key": "address",
+          "name": "value0",
+          "type": "mapping",
+          "value": {
+            "kind": "uint96",
+            "name": "value1",
+            "type": "simple"
+          }
+        }
+      } as Structure;
+
+      const tableOptions2 = toTableOptions('test', st2);
+
+      expect({
+        "name": "test",
+        "columns": [{
+            "generationStrategy": "increment",
+            "isGenerated": true,
+            "isPrimary": true,
+            "name": "id",
+            "type": "integer",
+          }, {
+            "isNullable": true,
+            "name": "allowances",
+            "type": "character varying(66)",
+          }],
+      }).toStrictEqual(tableOptions2[0]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "allowances_id",
+          "type": "integer",
+          "isNullable": false
+        },{
+          "isNullable": true,
+          "name": "value0",
+          "type": "character varying(66)",
+        }],
+    }).toStrictEqual(tableOptions2[1]);
+
+    expect({
+      "name": "test",
+      "columns": [{
+          "generationStrategy": "increment",
+          "isGenerated": true,
+          "isPrimary": true,
+          "name": "id",
+          "type": "integer",
+        }, {
+          "name": "value0_id",
+          "type": "integer",
+          "isNullable": false
+        },{
+          "isNullable": true,
+          "name": "value1",
+          "type": "numeric",
+        }],
+    }).toStrictEqual(tableOptions2[2]);
+  });
+});

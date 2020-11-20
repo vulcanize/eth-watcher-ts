@@ -134,7 +134,7 @@ VALUES
 		});
 	}
 
-	private static _getPgType(abiType: string): string {
+	public static _getPgType(abiType: string): string {
 		let pgType = 'TEXT';
 
 		// Fill in pg type based on abi type

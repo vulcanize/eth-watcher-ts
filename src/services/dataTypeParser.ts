@@ -1,4 +1,6 @@
 import { parse, SourceUnit, ContractDefinition, StateVariableDeclaration, StructDefinition, TypeName } from 'solidity-parser-diligence';
+import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import DataService from './dataService';
 
 export const errUnknownVariable = new Error('unknown variable');
 
@@ -147,4 +149,81 @@ export function toFields(obj: Structure): Field[] {
     level++;
   }
   return fields;
+}
+
+export function toTableOptions(tableName: string, obj: Structure, fk?: string): TableOptions[] {
+    const tableOptions: TableOptions = {
+        name: tableName,
+        columns: [
+          {
+            name: 'id',
+            type: 'integer',
+            isPrimary: true,
+            isGenerated: true,
+            generationStrategy: 'increment'
+          },
+        ]
+      };
+
+      if (fk) {
+        tableOptions.columns.push({
+          name: fk,
+          type: 'integer',
+          isNullable: false,
+        });
+      }
+
+      if (obj.type === 'simple') {
+        tableOptions.columns.push({
+          name: obj.name,
+          type: DataService._getPgType(obj.kind),
+          isNullable: true,
+        });
+        
+        return [tableOptions];
+      }
+      
+      if (obj.type === 'mapping') {
+        tableOptions.columns.push({
+          name: obj.name,
+          type: DataService._getPgType(obj.key),
+          isNullable: true,
+        });
+
+        return [tableOptions, ...toTableOptions(tableName, obj.value, `${obj.name}_id`)];
+        
+        // if (obj.value.type === 'simple') {
+        //   tableOptions.columns.push({
+        //     name: obj.value.name,
+        //     type: DataService._getPgType(obj.value.kind),
+        //     isNullable: true,
+        //   });
+        // } else {
+        //   // TODO: make a recursive function
+        // }
+
+      }
+      
+      if (obj.type === 'array') {
+        if (obj.kind.type === 'simple') {
+          tableOptions.columns.push({
+            name: obj.kind.name,
+            type: DataService._getPgType(obj.kind.kind),
+            isNullable: true,
+            isArray: true,
+          });
+
+          return [tableOptions];
+        } else if (obj.kind.type === 'mapping') {
+          return [tableOptions, ...toTableOptions(tableName, obj.kind.value, `${obj.kind.name}_id`)];
+        }
+      }
+      
+      if (obj.type === 'struct') {
+        // TODO:
+      } else {
+        throw new Error('Wrong sctructure type');
+      }
+
+      return null;
 }
