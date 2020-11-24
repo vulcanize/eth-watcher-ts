@@ -21,6 +21,7 @@ import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
 import { toStructure, toTableOptions } from './dataTypeParser';
+import SlotRepository from '../repositories/data/slotRepository';
 
 const LIMIT = 1000;
 
@@ -109,7 +110,6 @@ VALUES
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
-
 		const tableName = DataService._getTableName({
 			contractId,
 			type: 'state',
@@ -361,11 +361,17 @@ VALUES
 
 				console.log('structure', structure);
 
-				const tableOptions = toTableOptions('test', toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
-				console.log(JSON.stringify(tableOptions, null, 2));
+				const tableName = DataService._getTableName({
+					contractId: contract.contractId,
+					type: 'state',
+					id: state.stateId,
+				});
+				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
+				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
 					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
 						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
@@ -385,7 +391,16 @@ VALUES
 						console.log(decoded[0].toString('hex'));
 						console.log(value);
 
-						await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+						const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
+						await slotRepository.add(tableOptions[1].name, [
+							`${structure.name}_id`,
+							structure.value.name,
+						], [
+							id,
+							value,
+						]);
+
+						// await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
 					}
 				} else if (structure.type === 'simple') {
 					const storageLeafKey = DataService._getKeyForFixedType(state.slot)
