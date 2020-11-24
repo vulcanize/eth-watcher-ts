@@ -20,6 +20,7 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
+import { toStructure, toTableOptions } from './dataTypeParser';
 
 const LIMIT = 1000;
 
@@ -356,8 +357,14 @@ VALUES
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 
 			for (const state of states) {
-				let storageLeafKey = null ;
-				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+				const structure = toStructure(state.type, state.type.split(' ').pop().replace(';', ''));
+
+				console.log('structure', structure);
+
+				const tableOptions = toTableOptions('test', toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
+				console.log(JSON.stringify(tableOptions, null, 2));
+
+				if (structure.type === 'mapping') {
 					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 
 					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
@@ -379,11 +386,9 @@ VALUES
 						console.log(value);
 
 						await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
-
-
 					}
-				} else if (state.type === 'uint') {
-					storageLeafKey = DataService._getKeyForFixedType(state.slot)
+				} else if (structure.type === 'simple') {
+					const storageLeafKey = DataService._getKeyForFixedType(state.slot)
 					console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -394,7 +399,7 @@ VALUES
 
 					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-					const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
+					const value = abi.rawDecode([ structure.kind ], Buffer.from(decoded[1], 'hex'))[0];
 
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
@@ -528,17 +533,18 @@ VALUES
 				Store.getStore().addAddress(address);
 			}
 
-
-
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
-				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+				const structure = toStructure(state.type, state.type.split(' ').pop().replace(';', ''));
+				if (structure.type === 'mapping' || structure.type === 'struct') {
 					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
-					console.log('contract.address', contract.address);
 					const addresses: Address[] = Store.getStore().getAddresses();
 					for (const adr of addresses) {
-						const hash = DataService._getKeyForMapping(adr.address, state.slot);
-						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
+						if (!isExist) {
+							const hash = DataService._getKeyForMapping(adr.address, state.slot);
+							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+						}
 					}
 				}
 			}
@@ -549,26 +555,16 @@ VALUES
 		return `data.contract_id_${contractId}_${type}_id_${id}`;
 	}
 
-	private static _getTableOptions(contract: Contract, { event, state }: { event?: Event; state?: State }): TableOptions {
-		let tableName;
-		
-		if (!event && !state) {
+	private static _getTableOptions(contract: Contract, { event }: { event?: Event }): TableOptions {
+		if (!event) {
 			throw new ApplicationError('Bad params');
 		}
 
-		if (event) {
-			tableName = this._getTableName({
-				contractId: contract.contractId,
-				type: 'event',
-				id: event.eventId,
-			});
-		} else if (state) {
-			tableName = this._getTableName({
-				contractId: contract.contractId,
-				type: 'state',
-				id: state.stateId,
-			});
-		}
+		const tableName = this._getTableName({
+			contractId: contract.contractId,
+			type: 'event',
+			id: event.eventId,
+		});
 
 		const tableOptions: TableOptions = {
 				name: tableName,
@@ -589,34 +585,19 @@ VALUES
 				]
 			};
 
-			if (event) {
-				tableOptions.columns.push({
-					name: 'event_id',
-					type: 'integer',
-				});
+			tableOptions.columns.push({
+				name: 'event_id',
+				type: 'integer',
+			});
 
-				const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
-				data.forEach((line) => {
-					tableOptions.columns.push({
-						name: `data_${line.name.toLowerCase().trim()}`,
-						type: this._getPgType(line.internalType),
-						isNullable: true,
-					});
-				});
-			}
-
-			if (state) {
+			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+			data.forEach((line) => {
 				tableOptions.columns.push({
-					name: 'state_id',
-					type: 'integer',
-				});
-				
-				tableOptions.columns.push({
-					name: `slot_${state.slot}`,
-					type: this._getPgType(state.type),
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: this._getPgType(line.internalType),
 					isNullable: true,
 				});
-			}
+			});
 
 			return tableOptions;
 	}
@@ -655,8 +636,10 @@ VALUES
 				return;
 			}
 
-			const tableOptions = DataService._getTableOptions(contract, { state });
-			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
+			await Promise.all(
+				tableOptions.map((t) => entityManager.queryRunner.createTable(new Table(t), true))
+			);
 			console.log('create new table', tableName);
 		});
 	}

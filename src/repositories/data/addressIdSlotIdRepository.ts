@@ -49,7 +49,18 @@ export default class AddressIdSlotIdRepository {
 		return this.queryRunner.query(sql);
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async isExist(cotractAddressId: number, slotId: number, addressId: number): Promise<boolean> {
+		const tableName = `data.address_id_${cotractAddressId}_slot_id_${slotId}`;
+		const sql = `SELECT * FROM ${tableName} WHERE address_id=${addressId};`;
+
+		const data = await this.queryRunner.query(sql);
+		if (!data) {
+			return false;
+		}
+
+		return data[0]?.address_id ? true : false;
+	}
+
 	public async getAddressIdByHash(cotractAddressId: number, slotId: number, hash: string): Promise<number> {
 		const tableName = `data.address_id_${cotractAddressId}_slot_id_${slotId}`;
 		const sql = `SELECT * FROM ${tableName} WHERE hash='${hash}';`;

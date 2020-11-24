@@ -190,7 +190,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           isNullable: true,
         });
 
-        return [tableOptions, ...toTableOptions(tableName, obj.value, `${obj.name}_id`)];
+        return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.value, `${obj.name}_id`)];
       }
       
       if (obj.type === 'array') {
@@ -204,9 +204,9 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
 
           return [tableOptions];
         } else if (obj.kind.type === 'mapping') {
-          return [tableOptions, ...toTableOptions(tableName, obj.kind.value, `${obj.kind.name}_id`)];
+          return [tableOptions, ...toTableOptions(`${tableName}_${obj.kind.name}_id`, obj.kind.value, `${obj.kind.name}_id`)];
         } else if (obj.kind.type === 'struct') {
-          return [tableOptions, ...toTableOptions(tableName, obj.kind, `${obj.name}_id`)];
+          return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.kind, `${obj.name}_id`)];
         }
       }
       

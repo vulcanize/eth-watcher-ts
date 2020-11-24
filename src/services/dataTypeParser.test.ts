@@ -347,7 +347,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions1[0]);
 
     expect({
-      "name": "test",
+      "name": "test_balances_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -416,7 +416,7 @@ describe('toTableOptions', function () {
       }).toStrictEqual(tableOptions2[0]);
 
     expect({
-      "name": "test",
+      "name": "test_allowances_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -435,7 +435,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions2[1]);
 
     expect({
-      "name": "test",
+      "name": "test_allowances_id_value0_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -526,7 +526,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions2[0]);
 
     expect({
-      "name": "test",
+      "name": "test_checkpoint_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -587,7 +587,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions3[0]);
 
     expect({
-      "name": "test",
+      "name": "test_checkpoint_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -653,7 +653,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions4[0]);
 
     expect({
-      "name": "test",
+      "name": "test_checkpoint_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -672,7 +672,7 @@ describe('toTableOptions', function () {
     }).toStrictEqual(tableOptions4[1]);
 
     expect({
-      "name": "test",
+      "name": "test_checkpoint_id_value0_id",
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
