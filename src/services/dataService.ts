@@ -20,7 +20,7 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
-import { toStructure, toTableOptions } from './dataTypeParser';
+import { MappingStructure, SimpleStructure, toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 
 const LIMIT = 1000;
@@ -351,7 +351,7 @@ VALUES
 
 		console.log(JSON.stringify(relatedNode, null, 2));
 
-		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey); // stateLeafKey keccak co.addres . sender 
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const address = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -370,16 +370,16 @@ VALUES
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+					// const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
 						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
-						const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+						// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
 
-						if (!addressId) {
-							continue;
-						}
+						// if (!addressId) {
+						// 	continue;
+						// }
 
 						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 						const decoded: any = rlp.decode(buffer); // eslint-disable-line
@@ -544,7 +544,8 @@ VALUES
 		for (const contract of contracts) {
 			let address: Address = Store.getStore().getAddress(contract.address);
 			if (!address) {
-				address = await addressRepository.add(contract.address);
+				const hash = '0x' + keccakFromHexString(contract.address).toString('hex');
+				address = await addressRepository.add(contract.address, hash);
 				Store.getStore().addAddress(address);
 			}
 
