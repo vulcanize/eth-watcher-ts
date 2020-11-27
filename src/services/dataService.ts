@@ -357,7 +357,7 @@ VALUES
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 
 			for (const state of states) {
-				const structure = toStructure(state.type, state.type.split(' ').pop().replace(';', ''));
+				const structure = toStructure(state.type, state.variable);
 
 				console.log('structure', structure);
 
@@ -366,20 +366,20 @@ VALUES
 					type: 'state',
 					id: state.stateId,
 				});
-				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
+				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					// const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+					// const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
 						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
 						// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
 
-						// if (!addressId) {
-						// 	continue;
-						// }
+						if (!storage.storageLeafKey) {
+							continue;
+						}
 
 						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 						const decoded: any = rlp.decode(buffer); // eslint-disable-line
@@ -402,8 +402,41 @@ VALUES
 
 						// await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
 					}
+				} else if (structure.type === 'struct') {
+					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+
+					let index = state.slot;
+					const data: { name: string; value: any }[] = []; // eslint-disable-line
+					for (const field of structure.fields) {
+						if (field.type === 'simple') {
+							const storageLeafKey = DataService._getKeyForFixedType(index);
+							console.log('storageLeafKey', storageLeafKey);
+
+							const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
+							if (!storage) {
+								continue;
+							}
+
+							const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+							const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+							console.log(decoded);
+							const value = abi.rawDecode([ field.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+							data.push({
+								name: field.name,
+								value,
+							})
+
+							index++;
+						} else {
+							// TODO
+						}
+					}
+
+					await slotRepository.add(tableOptions[0].name, data.map((d) => d.name), data.map((d) => d.value));
 				} else if (structure.type === 'simple') {
-					const storageLeafKey = DataService._getKeyForFixedType(state.slot)
+					const storageLeafKey = DataService._getKeyForFixedType(state.slot);
 					console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -551,7 +584,7 @@ VALUES
 
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
-				const structure = toStructure(state.type, state.type.split(' ').pop().replace(';', ''));
+				const structure = toStructure(state.type, state.variable);
 				if (structure.type === 'mapping' || structure.type === 'struct') {
 					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
 					const addresses: Address[] = Store.getStore().getAddresses();
@@ -652,7 +685,7 @@ VALUES
 				return;
 			}
 
-			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.type.split(' ').pop().replace(';', '')))
+			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
 			await Promise.all(
 				tableOptions.map((t) => entityManager.queryRunner.createTable(new Table(t), true))
 			);
