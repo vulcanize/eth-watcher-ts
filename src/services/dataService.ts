@@ -22,6 +22,9 @@ import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
 import { MappingStructure, SimpleStructure, toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
+import EventRepository from '../repositories/data/eventRepository';
+
+const BigNumber = require('bignumber.js');
 
 const LIMIT = 1000;
 
@@ -78,6 +81,9 @@ export default class DataService {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+		if (!data) {
+			return;
+		}
 
 		const tableName = DataService._getTableName({
 			contractId,
@@ -85,25 +91,24 @@ export default class DataService {
 			id: eventId
 		});
 
-		if (!data) {
-			return;
-		}
-
 		return getConnection().transaction(async (entityManager) => {
-			const sql = `INSERT INTO ${tableName}
-(event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
-VALUES
-(${eventId}, ${contractId}, '${mhKey}', '${data.map((line) => line.value.toString().replace(/\0/g, '')).join('\',\'')}');`;
-
-			console.log(sql);
-
-			const [err] = await to(entityManager.queryRunner.query(sql));
-			if (err) {
-				// TODO: throw err
-				console.log(err);	
-			}
-
+			const eventRepository: EventRepository = new EventRepository(entityManager.queryRunner);
 			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
+
+			await eventRepository.add(tableName, [{
+				name: 'event_id',
+				value: eventId,
+				isStrict: true,
+			}, {
+				name: 'contract_id',
+				value: contractId,
+				isStrict: true,
+			}, {
+				name: 'mh_key',
+				value: mhKey,
+				isStrict: true,
+			},
+			...data]);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
@@ -136,7 +141,7 @@ VALUES
 	}
 
 	public static _getPgType(abiType: string): string {
-		let pgType = 'TEXT';
+		let pgType = 'text';
 
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
@@ -353,7 +358,7 @@ VALUES
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey); // stateLeafKey keccak co.addres . sender 
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
-			const address = Store.getStore().getAddress(contract.address);
+			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 
 			for (const state of states) {
@@ -370,37 +375,99 @@ VALUES
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					// const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
-					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
-						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
-						// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+					if (structure.value.type === 'simple') {
+						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+							console.log('storage.storageLeafKey', contractAddress.addressId, state.stateId, storage.storageLeafKey);
+							// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
 
-						if (!storage.storageLeafKey) {
-							continue;
+							if (!storage.storageLeafKey) {
+								continue;
+							}
+
+							const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+							const decoded: any = rlp.decode(buffer); // eslint-disable-line
+							const value = abi.rawDecode([ structure.value.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+							console.log(decoded);
+							console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+
+							console.log(decoded[0].toString('hex'));
+							console.log(value);
+
+							const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
+							await slotRepository.add(tableOptions[1].name, [
+								`${structure.name}_id`,
+								structure.value.name,
+							], [
+								id,
+								value,
+							]);
+						}
+					} else if (structure.value.type === 'struct') {
+						// asd mmaping -> struct
+						console.log('structure.value', structure.value.fields);
+
+						let storageLeafKey;
+						let addressId;
+						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contractAddress.addressId, state.stateId, storage.storageLeafKey);
+
+							if (!addressId) {
+								continue;
+							}
+
+							storageLeafKey = storage.storageLeafKey;
 						}
 
-						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
-						const decoded: any = rlp.decode(buffer); // eslint-disable-line
-						const value = abi.rawDecode([ 'uint' ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+						const address = Store.getStore().getAddressById(addressId);
+						const id = await slotRepository.add(tableOptions[0].name, [structure.name], [address.address]);
 
-						console.log(decoded);
-						console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+						const hashes = [storageLeafKey];
+						const correctStorageLeafKey = DataService._getKeyForMapping(address.address, state.slot, false);
+						for (let i = 1; i < structure.value.fields.length; i++) {
+							const x = new BigNumber(correctStorageLeafKey);
+							const sum = x.plus(i);
+							const key = '0x' + sum.toString(16);
+							hashes.push('0x' + keccakFromHexString(key).toString('hex'));
+						}
 
-						console.log(decoded[0].toString('hex'));
-						console.log(value);
+						let index = state.slot;
+						const data: { name: string; value: any }[] = []; // eslint-disable-line
+						for (const field of structure.value.fields) {
+							if (field.type === 'simple') {
+								const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === hashes[index]);
+								console.log('storageLeafKey', hashes[index]);
+								index++;
 
-						const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
-						await slotRepository.add(tableOptions[1].name, [
-							`${structure.name}_id`,
-							structure.value.name,
-						], [
-							id,
-							value,
-						]);
+								if (!storage) {
+									continue;
+								}
 
-						// await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+								const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+								const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+								console.log(decoded);
+								const value = abi.rawDecode([ field.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+								data.push({
+									name: field.name,
+									value,
+								});
+							} else {
+								// TODO:
+							}
+						}
+
+						console.log('data', data);
+						await slotRepository.add(tableOptions[1].name,
+							[`${structure.name}_id`, ...data.map((d) => d.name)],
+							[id, ...data.map((d) => d.value)]
+						);
+					} else {
+						// TODO
 					}
 				} else if (structure.type === 'struct') {
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
@@ -411,6 +478,7 @@ VALUES
 						if (field.type === 'simple') {
 							const storageLeafKey = DataService._getKeyForFixedType(index);
 							console.log('storageLeafKey', storageLeafKey);
+							index++;
 
 							const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
 							if (!storage) {
@@ -426,9 +494,7 @@ VALUES
 							data.push({
 								name: field.name,
 								value,
-							})
-
-							index++;
+							});
 						} else {
 							// TODO
 						}

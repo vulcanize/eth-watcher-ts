@@ -21,6 +21,7 @@
     "@types/http-status-codes": "^1.2.0",
     "@types/node": "^10.17.34",
     "await-to-js": "^2.1.1",
+    "bignumber.js": "^9.0.1",
     "body-parser": "^1.18.3",
     "cors": "^2.8.5",
     "envalid": "^5.0.0",
