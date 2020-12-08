@@ -2,15 +2,13 @@ import { ApolloClient, gql, HttpLink, InMemoryCache, NormalizedCacheObject, spli
 import { WebSocketLink } from '@apollo/client/link/ws';
 import { getMainDefinition } from '@apollo/client/utilities';
 import { SubscriptionClient } from 'subscriptions-transport-ws';
-import * as ws from 'ws';
 import * as fetch from "node-fetch";
-import env from './env';
 
 export default class GraphqlClient {
 
 	public client: ApolloClient<NormalizedCacheObject> = null;
 
-	public constructor (uri = env.GRAPHQL_URI) {
+	public constructor (uri: string, webSocket) {
 		const GRAPHQL_ENDPOINT = `${uri.replace('http', 'ws')}/graphql`; // wss://... or ws://...
 		const HTTP_ENDPOINT = `${uri}/graphql`; // https://... or http://...
 
@@ -19,7 +17,7 @@ export default class GraphqlClient {
 			connectionCallback: (error): void => {
 				error && console.error(error);
 			}
-		}, ws);
+		}, webSocket);
 		const wsLink = new WebSocketLink(subscriptionClient);
 
 		const httpLink = new HttpLink({

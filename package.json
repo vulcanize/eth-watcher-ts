@@ -21,6 +21,7 @@
     "@types/http-status-codes": "^1.2.0",
     "@types/node": "^10.17.34",
     "await-to-js": "^2.1.1",
+    "awesome-typescript-loader": "^5.2.1",
     "bignumber.js": "^9.0.1",
     "body-parser": "^1.18.3",
     "cors": "^2.8.5",
@@ -39,7 +40,8 @@
     "ts-node": "^8.10.2",
     "typeorm": "^0.2.26",
     "typescript": "^3.9.7",
-    "ws": "^7.3.1"
+    "webpack": "^5.10.0",
+    "ws": "^7.4.1"
   },
   "devDependencies": {
     "@babel/core": "^7.11.6",
@@ -51,11 +53,15 @@
     "@typescript-eslint/eslint-plugin-tslint": "^2.8.0",
     "@typescript-eslint/parser": "^2.8.0",
     "babel-jest": "^26.3.0",
+    "babel-loader": "^8.2.2",
     "eslint": "^6.6.0",
     "eslint-plugin-import": "^2.18.2",
     "eslint-plugin-prefer-arrow": "^1.1.6",
+    "expose-loader": "^1.0.3",
     "jest": "^26.4.2",
     "ts-jest": "^26.4.1",
-    "typeorm-model-generator": "^0.4.2"
+    "ts-loader": "^8.0.11",
+    "typeorm-model-generator": "^0.4.2",
+    "webpack-cli": "^4.2.0"
   }
 }

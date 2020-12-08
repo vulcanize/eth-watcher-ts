@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+  </head>
+  <body>
+    <script type="text/javascript" src="./bundle.js"></script>
+    Test Page (use CORS Unblock extension)
+    <br/>
+    <b>Get by block number: await cw.ethHeaderCidById(blockNumber)</b>
+    <br />
+    <b>Subscription: cw.subscriptionHeaderCids(...)</b>
+    <ul id='list'></ul>
+
+    <script type="text/javascript">
+        var cw = new ContractWatcher('http://localhost:5020');
+        console.log(cw);
+        cw.subscriptionHeaderCids(function (item) {
+          const el = document.createElement('li');
+          el.innerText = JSON.stringify(item, null, 2);
+          document.getElementById('list').appendChild(el);
+        })
+    </script>
+  </body>
+</html>
