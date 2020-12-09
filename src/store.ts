@@ -41,7 +41,7 @@ export default class Store {
 	public static init(autoUpdate = true): void {
 		const store = this.getStore();
 
-		Store.store.syncData();
+		store.syncData();
 		if (autoUpdate) {
 			setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
 		}
@@ -112,22 +112,22 @@ export default class Store {
 	}
 
 	public async syncData(): Promise<void> {
-		[this.contracts, this.events, this.methods, this.states, this.addresses] = await Promise.all([
-			this.contractService?.loadContracts(),
-			this.contractService?.loadEvents(),
-			this.contractService?.loadMethods(),
-			this.contractService?.loadStates(),
-			this.contractService?.loadAddresses(),
-		])
+		[Store.store.contracts, Store.store.events, Store.store.methods, Store.store.states, Store.store.addresses] = await Promise.all([
+			Store.store.contractService?.loadContracts(),
+			Store.store.contractService?.loadEvents(),
+			Store.store.contractService?.loadMethods(),
+			Store.store.contractService?.loadStates(),
+			Store.store.contractService?.loadAddresses(),
+		]);
 
-		await this.dataService.createTables(this.contracts);
-		await this.dataService.prepareAddresses(this.contracts);
+		await Store.store.dataService?.createTables(Store.store.contracts);
+		await Store.store.dataService?.prepareAddresses(Store.store.contracts);
 
-		console.log(`Contracts: \t${this.contracts.length}`);
-		console.log(`Events: \t${this.events.length}`);
-		console.log(`Methods: \t${this.methods.length}`);
-		console.log(`States: \t${this.states.length}`);
-		console.log(`Addresses: \t${this.addresses.length}`);
+		console.log(`Contracts: \t${Store.store.contracts?.length}`);
+		console.log(`Events: \t${Store.store.events?.length}`);
+		console.log(`Methods: \t${Store.store.methods?.length}`);
+		console.log(`States: \t${Store.store.states?.length}`);
+		console.log(`Addresses: \t${Store.store.addresses?.length}`);
 	}
 
 }

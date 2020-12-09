@@ -12,4 +12,7 @@ export default class State {
 
 	@Column("character varying", { name: "type" })
 	type: string;
+
+	@Column("character varying", { name: "variable" })
+	variable: string;
 }

@@ -20,9 +20,30 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
+import { MappingStructure, SimpleStructure, toStructure, toTableOptions } from './dataTypeParser';
+import SlotRepository from '../repositories/data/slotRepository';
+import EventRepository from '../repositories/data/eventRepository';
+
+const BigNumber = require('bignumber.js');
 
 const LIMIT = 1000;
-const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
+
+
+const INDEX = [
+	'0000000000000000000000000000000000000000000000000000000000000000', // 0
+	'0000000000000000000000000000000000000000000000000000000000000001',
+	'0000000000000000000000000000000000000000000000000000000000000002',
+	'0000000000000000000000000000000000000000000000000000000000000003',
+	'0000000000000000000000000000000000000000000000000000000000000004',
+	'0000000000000000000000000000000000000000000000000000000000000005',
+	'0000000000000000000000000000000000000000000000000000000000000006',
+	'0000000000000000000000000000000000000000000000000000000000000007',
+	'0000000000000000000000000000000000000000000000000000000000000008',
+	'0000000000000000000000000000000000000000000000000000000000000009',
+	'000000000000000000000000000000000000000000000000000000000000000a', // 10
+	'000000000000000000000000000000000000000000000000000000000000000b', // 11
+	'000000000000000000000000000000000000000000000000000000000000000c', // 12
+];
 
 type ABIInput = {
 	name: string;
@@ -60,6 +81,9 @@ export default class DataService {
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+		if (!data) {
+			return;
+		}
 
 		const tableName = DataService._getTableName({
 			contractId,
@@ -67,32 +91,30 @@ export default class DataService {
 			id: eventId
 		});
 
-		if (!data) {
-			return;
-		}
-
 		return getConnection().transaction(async (entityManager) => {
-			const sql = `INSERT INTO ${tableName}
-(event_id, contract_id, mh_key, ${data.map((line) => 'data_' + line.name.toLowerCase().trim()).join(',')})
-VALUES
-(${eventId}, ${contractId}, '${mhKey}', '${data.map((line) => line.value.toString().replace(/\0/g, '')).join('\',\'')}');`;
-
-			console.log(sql);
-
-			const [err] = await to(entityManager.queryRunner.query(sql));
-			if (err) {
-				// TODO: throw err
-				console.log(err);	
-			}
-
+			const eventRepository: EventRepository = new EventRepository(entityManager.queryRunner);
 			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
+
+			await eventRepository.add(tableName, [{
+				name: 'event_id',
+				value: eventId,
+				isStrict: true,
+			}, {
+				name: 'contract_id',
+				value: contractId,
+				isStrict: true,
+			}, {
+				name: 'mh_key',
+				value: mhKey,
+				isStrict: true,
+			},
+			...data]);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
-
 		const tableName = DataService._getTableName({
 			contractId,
 			type: 'state',
@@ -118,8 +140,8 @@ VALUES
 		});
 	}
 
-	private static _getPgType(abiType: string): string {
-		let pgType = 'TEXT';
+	public static _getPgType(abiType: string): string {
+		let pgType = 'text';
 
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
@@ -134,13 +156,13 @@ VALUES
 				pgType = 'boolean';
 				break;
 			case 'bytes':
-				pgType = "bytea";
+				pgType = 'bytea';
 				break;
 			// case abi.ArrayTy:
-			// 	pgType = "text[]";
+			// 	pgType = 'text[]';
 			// 	break;
 			default:
-				pgType = "text";
+				pgType = 'text';
 		}
 
 		return pgType;
@@ -334,41 +356,153 @@ VALUES
 
 		console.log(JSON.stringify(relatedNode, null, 2));
 
-		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey); // stateLeafKey keccak co.addres . sender 
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
-			const address = Store.getStore().getAddress(contract.address);
+			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 
 			for (const state of states) {
-				const slot = state.slot.toString();
-				let storageLeafKey = null ;
-				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+				const structure = toStructure(state.type, state.variable);
 
-					for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
-						console.log('storage.storageLeafKey', address.addressId, state.stateId, storage.storageLeafKey);
-						const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+				console.log('structure', structure);
 
-						if (!addressId) {
-							continue;
+				const tableName = DataService._getTableName({
+					contractId: contract.contractId,
+					type: 'state',
+					id: state.stateId,
+				});
+				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
+				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
+
+				if (structure.type === 'mapping') {
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
+					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+
+					if (structure.value.type === 'simple') {
+						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+							console.log('storage.storageLeafKey', contractAddress.addressId, state.stateId, storage.storageLeafKey);
+							// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
+
+							if (!storage.storageLeafKey) {
+								continue;
+							}
+
+							const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+							const decoded: any = rlp.decode(buffer); // eslint-disable-line
+							const value = abi.rawDecode([ structure.value.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+							console.log(decoded);
+							console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+
+							console.log(decoded[0].toString('hex'));
+							console.log(value);
+
+							const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
+							await slotRepository.add(tableOptions[1].name, [
+								`${structure.name}_id`,
+								structure.value.name,
+							], [
+								id,
+								value,
+							]);
+						}
+					} else if (structure.value.type === 'struct') {
+						// asd mmaping -> struct
+						console.log('structure.value', structure.value.fields);
+
+						let storageLeafKey;
+						let addressId;
+						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
+							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contractAddress.addressId, state.stateId, storage.storageLeafKey);
+
+							if (!addressId) {
+								continue;
+							}
+
+							storageLeafKey = storage.storageLeafKey;
 						}
 
-						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
-						const decoded: any = rlp.decode(buffer); // eslint-disable-line
-						const value = abi.rawDecode([ 'uint' ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+						const address = Store.getStore().getAddressById(addressId);
+						const id = await slotRepository.add(tableOptions[0].name, [structure.name], [address.address]);
 
-						console.log(decoded);
-						console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+						const hashes = [storageLeafKey];
+						const correctStorageLeafKey = DataService._getKeyForMapping(address.address, state.slot, false);
+						for (let i = 1; i < structure.value.fields.length; i++) {
+							const x = new BigNumber(correctStorageLeafKey);
+							const sum = x.plus(i);
+							const key = '0x' + sum.toString(16);
+							hashes.push('0x' + keccakFromHexString(key).toString('hex'));
+						}
 
-						console.log(decoded[0].toString('hex'));
-						console.log(value);
+						let index = state.slot;
+						const data: { name: string; value: any }[] = []; // eslint-disable-line
+						for (const field of structure.value.fields) {
+							if (field.type === 'simple') {
+								const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === hashes[index]);
+								console.log('storageLeafKey', hashes[index]);
+								index++;
 
-						await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+								if (!storage) {
+									continue;
+								}
 
+								const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+								const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
+								console.log(decoded);
+								const value = abi.rawDecode([ field.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+								data.push({
+									name: field.name,
+									value,
+								});
+							} else {
+								// TODO:
+							}
+						}
+
+						console.log('data', data);
+						await slotRepository.add(tableOptions[1].name,
+							[`${structure.name}_id`, ...data.map((d) => d.name)],
+							[id, ...data.map((d) => d.value)]
+						);
+					} else {
+						// TODO
 					}
-				} else if (state.type === 'uint') {
-					storageLeafKey = '0x' + keccak256(Buffer.from(zero64.substring(0, zero64.length - slot.length) + slot, 'hex')).toString('hex');
+				} else if (structure.type === 'struct') {
+					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+
+					let index = state.slot;
+					const data: { name: string; value: any }[] = []; // eslint-disable-line
+					for (const field of structure.fields) {
+						if (field.type === 'simple') {
+							const storageLeafKey = DataService._getKeyForFixedType(index);
+							console.log('storageLeafKey', storageLeafKey);
+							index++;
+
+							const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
+							if (!storage) {
+								continue;
+							}
+
+							const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
+							const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+							console.log(decoded);
+							const value = abi.rawDecode([ field.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
+
+							data.push({
+								name: field.name,
+								value,
+							});
+						} else {
+							// TODO
+						}
+					}
+
+					await slotRepository.add(tableOptions[0].name, data.map((d) => d.name), data.map((d) => d.value));
+				} else if (structure.type === 'simple') {
+					const storageLeafKey = DataService._getKeyForFixedType(state.slot);
 					console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -379,7 +513,7 @@ VALUES
 
 					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-					const value = abi.rawDecode([ state.type ], Buffer.from(decoded[1], 'hex'))[0];
+					const value = abi.rawDecode([ structure.kind ], Buffer.from(decoded[1], 'hex'))[0];
 
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
@@ -509,25 +643,23 @@ VALUES
 		for (const contract of contracts) {
 			let address: Address = Store.getStore().getAddress(contract.address);
 			if (!address) {
-				address = await addressRepository.add(contract.address);
+				const hash = '0x' + keccakFromHexString(contract.address).toString('hex');
+				address = await addressRepository.add(contract.address, hash);
 				Store.getStore().addAddress(address);
 			}
 
-
-
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
-				if (state.type === 'mapping') { // TODO: mapping(address=>uint)
+				const structure = toStructure(state.type, state.variable);
+				if (structure.type === 'mapping' || structure.type === 'struct') {
 					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
-					console.log('contract.address', contract.address);
-					const addresses: Address[] = Store.getStore().getAddresses(); // 100 m
+					const addresses: Address[] = Store.getStore().getAddresses();
 					for (const adr of addresses) {
-						const adrStr = (zero64.substring(0, zero64.length - adr.address.length) + adr.address.replace('0x', '0')).toLowerCase();
-						const slot = zero64.substring(0, zero64.length - state.slot.toString().length) + state.slot;
-						// TODO: !!! FIX DOULBE keccak !!!
-						const hash = '0x' + keccakFromHexString('0x' + keccakFromHexString('0x' + adrStr + slot).toString('hex')).toString('hex');
-
-						await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
+						if (!isExist) {
+							const hash = DataService._getKeyForMapping(adr.address, state.slot);
+							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+						}
 					}
 				}
 			}
@@ -538,26 +670,16 @@ VALUES
 		return `data.contract_id_${contractId}_${type}_id_${id}`;
 	}
 
-	private static _getTableOptions(contract: Contract, { event, state }: { event?: Event; state?: State }): TableOptions {
-		let tableName;
-		
-		if (!event && !state) {
+	private static _getTableOptions(contract: Contract, { event }: { event?: Event }): TableOptions {
+		if (!event) {
 			throw new ApplicationError('Bad params');
 		}
 
-		if (event) {
-			tableName = this._getTableName({
-				contractId: contract.contractId,
-				type: 'event',
-				id: event.eventId,
-			});
-		} else if (state) {
-			tableName = this._getTableName({
-				contractId: contract.contractId,
-				type: 'state',
-				id: state.stateId,
-			});
-		}
+		const tableName = this._getTableName({
+			contractId: contract.contractId,
+			type: 'event',
+			id: event.eventId,
+		});
 
 		const tableOptions: TableOptions = {
 				name: tableName,
@@ -578,34 +700,19 @@ VALUES
 				]
 			};
 
-			if (event) {
-				tableOptions.columns.push({
-					name: 'event_id',
-					type: 'integer',
-				});
+			tableOptions.columns.push({
+				name: 'event_id',
+				type: 'integer',
+			});
 
-				const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
-				data.forEach((line) => {
-					tableOptions.columns.push({
-						name: `data_${line.name.toLowerCase().trim()}`,
-						type: this._getPgType(line.internalType),
-						isNullable: true,
-					});
-				});
-			}
-
-			if (state) {
+			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
+			data.forEach((line) => {
 				tableOptions.columns.push({
-					name: 'state_id',
-					type: 'integer',
-				});
-				
-				tableOptions.columns.push({
-					name: `slot_${state.slot}`,
-					type: this._getPgType(state.type),
+					name: `data_${line.name.toLowerCase().trim()}`,
+					type: this._getPgType(line.internalType),
 					isNullable: true,
 				});
-			}
+			});
 
 			return tableOptions;
 	}
@@ -644,10 +751,37 @@ VALUES
 				return;
 			}
 
-			const tableOptions = DataService._getTableOptions(contract, { state });
-			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
+			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
+			await Promise.all(
+				tableOptions.map((t) => entityManager.queryRunner.createTable(new Table(t), true))
+			);
 			console.log('create new table', tableName);
 		});
+	}
+
+	private static _getKeyForFixedType(slot: number): string {
+		if (!INDEX[slot]) {
+			return null;
+		}
+
+		return '0x' + keccak256(Buffer.from(INDEX[slot], 'hex')).toString('hex');
+	}
+
+	private static _getKeyForMapping(address: string, slot: number, withHotFix = true): string {
+		if (!INDEX[slot]) {
+			return null;
+		}
+
+		const zero64 = '0000000000000000000000000000000000000000000000000000000000000000';
+		const adrStr = (zero64.substring(0, zero64.length - address.length) + address.replace('0x', '0')).toLowerCase();
+
+		const hash = '0x' + keccakFromHexString('0x' + adrStr + INDEX[slot]).toString('hex');
+		if (!withHotFix) {
+			return hash;
+		}
+
+		// TODO: !!! REMOVE HOT-FIX !!!
+		return '0x' + keccakFromHexString(hash).toString('hex');
 	}
 
 }
