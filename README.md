@@ -71,3 +71,11 @@ Then generate some events in Smart Contract and it will be populated to `data` s
 
 1. `npm run static-serve`
 2. Open http://localhost:3000/
+
+### How to generate test data
+
+1. connect to server via ssh
+2. `cd contract-watcher-runner`
+3. `docker-compose exec dapptools sh`
+4. `export ETH_FROM="0x117Db93426Ad44cE9774D239389fcB83057Fc88b"`
+5. `ETH_RPC_ACCOUNTS=1 seth send --gas 0xffff "0xE09af19D2E5254dA6c102da9fc4DdCc5B96856a0" "set(uint)" 42`
