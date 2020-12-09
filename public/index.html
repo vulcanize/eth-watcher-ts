@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+  </head>
+  <body>
+    <script type="text/javascript" src="./bundle.js"></script>
+
+    <h1>Test Page</h1>
+    <b>require <a href='https://chrome.google.com/webstore/detail/lfhmikememgdcahcdlaciloancbhjino'>CORS Unblock</a> extension</b>
+
+    <h2>Init</h2>
+    <pre>var cw = new ContractWatcher(GRAPHQL_URL);</pre>
+
+    <h2>Get block by number</h2>
+    <pre>await cw.ethHeaderCidById(blockNumber);</pre>
+    <pre id='bn200'>[result]</pre>
+
+    <h2>Add subscription</h2>
+    <pre>cw.subscriptionHeaderCids(f)</pre>
+
+    <div id='list'></div>
+
+    <script type="text/javascript">
+      var GRAPHQL_URL = 'http://localhost:5020';
+      var cw = new ContractWatcher(GRAPHQL_URL);
+      console.log(cw);
+
+      cw.ethHeaderCidById(200)
+        .then((data) => {
+          document.getElementById('bn200').innerText = JSON.stringify(data, null, 2);
+        });
+
+      cw.subscriptionHeaderCids(function (item) {
+        const el = document.createElement('pre');
+        el.innerText = JSON.stringify(item, null, 2);
+        document.getElementById('list').appendChild(el);
+      });
+    </script>
+  </body>
+</html>

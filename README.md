@@ -60,3 +60,14 @@ INSERT INTO contract.contracts (name, address, abi, events, methods, starting_bl
 ```
 
 Then generate some events in Smart Contract and it will be populated to `data` schema in database.
+
+## In browser
+
+### Build js library
+
+`npm run build-browser-lib`
+
+### Run demo page
+
+1. `npm run static-serve`
+2. Open http://localhost:3000/

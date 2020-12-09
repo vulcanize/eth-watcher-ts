@@ -3,7 +3,7 @@ const path = require('path');
 module.exports = {
     mode: 'development',
     entry: {
-        'app': './src/lib.ts',
+        'lib': './src/lib.ts',
     },
     output: {
         path: path.resolve(__dirname, 'public'),
@@ -13,7 +13,7 @@ module.exports = {
         umdNamedDefine: true
     },
     resolve: {
-        mainFields: ['browser', 'main', 'module'],
+        mainFields: ['browser', 'main'],
         extensions: [".webpack.js", ".web.js", '.wasm', '.mjs', '.ts', '.js'],
     },
     devtool: 'source-map',
@@ -33,13 +33,6 @@ module.exports = {
             }],
             exclude: [path.resolve(__dirname, "node_modules")],
         }, {
-            test: /.(js|jsx|mjs)$/,
-            exclude: [path.resolve(__dirname, "node_modules")],
-            loader: "babel-loader",
-            resolve: {
-                fullySpecified: false
-            },
-        }, {
             test: /\.tsx?$/,
             loader: 'awesome-typescript-loader',
             exclude: [path.resolve(__dirname, "node_modules")],
@@ -49,4 +42,3 @@ module.exports = {
         }]
     }
 }
-
