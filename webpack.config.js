@@ -14,7 +14,15 @@ module.exports = {
     },
     resolve: {
         mainFields: ['browser', 'main'],
+        aliasFields: ['browser'],
         extensions: [".webpack.js", ".web.js", '.wasm', '.mjs', '.ts', '.js'],
+        fallback: {
+            "stream": require.resolve("stream-browserify"),
+            "assert": false,
+        }
+    },
+    externals: {
+        'Buffer': 'buffer.Buffer'
     },
     devtool: 'source-map',
     module: {

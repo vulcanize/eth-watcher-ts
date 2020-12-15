@@ -5,6 +5,10 @@
     <title>Test</title>
   </head>
   <body>
+    <script type="text/javascript" src="https://bundle.run/buffer@6.0.3"></script>
+    <script>
+      window.Buffer = buffer.Buffer; // move to webpack
+    </script>
     <script type="text/javascript" src="./bundle.js"></script>
 
     <h1>Test Page</h1>
@@ -17,14 +21,34 @@
     <pre>await cw.ethHeaderCidById(blockNumber);</pre>
     <pre id='bn200'>[result]</pre>
 
-    <h2>Add subscription</h2>
+    <h2>Add subscription for HeaderCids</h2>
     <pre>cw.subscriptionHeaderCids(f)</pre>
+    <div id='list-1'></div>
 
-    <div id='list'></div>
+    <h2>Add subscription for ReceiptCids</h2>
+    <pre>cw.subscriptionReceiptCids(f)</pre>
+    <div id='list-2'></div>
+
+    <h2>Add subscription for StateCids</h2>
+    <pre>cw.subscriptionStateCids(f)</pre>
+    <div id='list-3'></div>
 
     <script type="text/javascript">
-      var GRAPHQL_URL = 'http://localhost:5000';
-      var cw = new ContractWatcher(GRAPHQL_URL);
+      var GRAPHQL_URL = 'http://localhost:5020';
+      var store = {
+        getEventsByContractId: (id) => [{
+          eventId: 1,
+          name: 'MessageChanged'
+        }],
+        getContracts: () => [{
+          contractId: 1,
+          address: '0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1',
+          abi: [{ "anonymous": false, "inputs": [{ "indexed": false, "internalType": "string", "name": "message", "type": "string" }], "name": "MessageChanged", "type": "event" }, { "inputs": [], "name": "getMessage", "outputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "message", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "name": "setMessage", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
+          events: [1],
+        }],
+      };
+
+      var cw = new ContractWatcher(GRAPHQL_URL, store);
       console.log(cw);
 
       cw.ethHeaderCidById(200)
@@ -32,11 +56,16 @@
           document.getElementById('bn200').innerText = JSON.stringify(data, null, 2);
         });
 
-      cw.subscriptionHeaderCids(function (item) {
+      cw.subscriptionHeaderCids((data) => saveData('list-1', data));
+      cw.subscriptionReceiptCids((data) => saveData('list-2', data));
+      cw.subscriptionStateCids((data) => saveData('list-3', data));
+      
+
+      function saveData(id, data) {
         const el = document.createElement('pre');
-        el.innerText = JSON.stringify(item, null, 2);
-        document.getElementById('list').appendChild(el);
-      });
+        el.innerText = JSON.stringify(data, null, 2);
+        document.getElementById(id).appendChild(el);
+      }
     </script>
   </body>
 </html>

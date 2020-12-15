@@ -21,7 +21,7 @@ import GraphqlClient from './graphqlClient';
 		const dataService = new DataService();
 
 		if (env.ENABLE_EVENT_WATCHER) {
-			graphqlService.subscriptionReceiptCids((data) => dataService.processEvent(data?.data?.listen?.relatedNode)); // async
+			graphqlService.subscriptionReceiptCids(Store.getStore(), (data) => dataService.processEvent(data?.data?.listen?.relatedNode)); // async
 		} else {
 			console.info('Event watcher is not enabled');
 		}

@@ -20,7 +20,7 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
-import { MappingStructure, SimpleStructure, toStructure, toTableOptions } from './dataTypeParser';
+import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 

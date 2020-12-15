@@ -61,6 +61,7 @@
     "expose-loader": "^1.0.3",
     "jest": "^26.4.2",
     "serve": "^11.3.2",
+    "stream-browserify": "^3.0.0",
     "ts-jest": "^26.4.1",
     "typeorm-model-generator": "^0.4.2",
     "webpack-cli": "^4.2.0"
