@@ -79,3 +79,10 @@ Then generate some events in Smart Contract and it will be populated to `data` s
 3. `docker-compose exec dapptools sh`
 4. `export ETH_FROM="0x117Db93426Ad44cE9774D239389fcB83057Fc88b"`
 5. `ETH_RPC_ACCOUNTS=1 seth send --gas 0xffff "0xE09af19D2E5254dA6c102da9fc4DdCc5B96856a0" "set(uint)" 42`
+
+
+### Test ReceiptCids
+1. `cd contract-watcher-runner`
+2. `docker-compose exec dapptools sh`
+3. `export ETH_FROM="0x117Db93426Ad44cE9774D239389fcB83057Fc88b"`
+4. `ETH_RPC_ACCOUNTS=1 seth send --gas 0xffff 0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1 'setMessage(string)' '"Hi 2021!"'`
