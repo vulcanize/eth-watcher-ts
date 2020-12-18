@@ -21,9 +21,10 @@ module.exports = {
             "assert": false,
         }
     },
-    externals: {
-        'Buffer': 'buffer.Buffer'
-    },
+    externals: [
+        'Buffer',
+        'fs',
+    ],
     devtool: 'source-map',
     module: {
         rules: [{

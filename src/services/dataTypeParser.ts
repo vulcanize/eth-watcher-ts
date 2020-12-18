@@ -1,6 +1,5 @@
 import { parse, SourceUnit, ContractDefinition, StateVariableDeclaration, StructDefinition, TypeName } from 'solidity-parser-diligence';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
-import DataService from './dataService';
 
 export const errUnknownVariable = new Error('unknown variable');
 
@@ -37,6 +36,34 @@ export type Structure = SimpleStructure | ArrayStructure | MappingStructure | Cu
 export type Field = {
   name: string;
   type: string;
+}
+
+function getPgType(abiType: string): string {
+  let pgType = 'text';
+
+  // Fill in pg type based on abi type
+  switch (abiType.replace(/\d+/g, '')) {
+    case 'address':
+      pgType = 'character varying(66)';
+      break;
+    case 'int':
+    case 'uint':
+      pgType = 'numeric';
+      break;
+    case 'bool':
+      pgType = 'boolean';
+      break;
+    case 'bytes':
+      pgType = 'bytea';
+      break;
+    // case abi.ArrayTy:
+    // 	pgType = 'text[]';
+    // 	break;
+    default:
+      pgType = 'text';
+  }
+
+  return pgType;
 }
 
 function parseStructure(name: string, typeName: TypeName, structs: StructDefinition[], level: number = 0): Structure {
@@ -176,7 +203,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
       if (obj.type === 'simple') {
         tableOptions.columns.push({
           name: obj.name,
-          type: DataService._getPgType(obj.kind),
+          type: getPgType(obj.kind),
           isNullable: true,
         });
         
@@ -186,7 +213,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
       if (obj.type === 'mapping') {
         tableOptions.columns.push({
           name: obj.name,
-          type: DataService._getPgType(obj.key),
+          type: getPgType(obj.key),
           isNullable: true,
         });
 
@@ -197,7 +224,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
         if (obj.kind.type === 'simple') {
           tableOptions.columns.push({
             name: obj.kind.name,
-            type: DataService._getPgType(obj.kind.kind),
+            type: getPgType(obj.kind.kind),
             isNullable: true,
             isArray: true,
           });
@@ -215,7 +242,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           if (field.type === 'simple') {
             tableOptions.columns.push({
               name: field.name,
-              type: DataService._getPgType(field.kind),
+              type: getPgType(field.kind),
               isNullable: true,
             });
           } else {

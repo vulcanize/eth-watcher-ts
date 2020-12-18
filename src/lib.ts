@@ -25,7 +25,7 @@ class ContractWatcher  {
     }
 
     public async subscriptionStateCids(func: (value: any) => void): Promise<void> {
-        return this.graphqlService.subscriptionStateCids(func);
+        return this.graphqlService.subscriptionStateCids(this.store, func);
     }
     
 }

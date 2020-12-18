@@ -60,6 +60,7 @@
     "eslint-plugin-prefer-arrow": "^1.1.6",
     "expose-loader": "^1.0.3",
     "jest": "^26.4.2",
+    "path-browserify": "^1.0.1",
     "serve": "^11.3.2",
     "stream-browserify": "^3.0.0",
     "ts-jest": "^26.4.1",

@@ -356,7 +356,7 @@ VALUES
 
 		console.log(JSON.stringify(relatedNode, null, 2));
 
-		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey); // stateLeafKey keccak co.addres . sender 
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -513,7 +513,7 @@ VALUES
 
 					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-					const value = abi.rawDecode([ structure.kind ], Buffer.from(decoded[1], 'hex'))[0];
+					const value = abi.rawDecode([ structure.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
 
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
@@ -759,7 +759,7 @@ VALUES
 		});
 	}
 
-	private static _getKeyForFixedType(slot: number): string {
+	public static _getKeyForFixedType(slot: number): string {
 		if (!INDEX[slot]) {
 			return null;
 		}
