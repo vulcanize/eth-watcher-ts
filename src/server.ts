@@ -35,7 +35,8 @@ import GraphqlClient from './graphqlClient';
 		}
 
 		if (env.ENABLE_STORAGE_WATCHER) {
-			graphqlService.subscriptionStateCids(Store.getStore(), (data) => dataService.processState(data?.data?.listen?.relatedNode)); // async
+			// TODO: fix params
+			graphqlService.subscriptionStateCids(null, null, (data) => dataService.processState(data?.data?.listen?.relatedNode)); // async
 		} else {
 			console.info('Storage watcher is not enabled');
 		}

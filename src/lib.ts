@@ -1,5 +1,6 @@
 import GraphqlService from "./services/graphqlService";
 import GraphqlClient from "./graphqlClient";
+import State from "./models/contract/state";
 
 class ContractWatcher  {
     private graphqlService: GraphqlService;
@@ -24,8 +25,8 @@ class ContractWatcher  {
         return this.graphqlService.subscriptionReceiptCids(this.store, func);
     }
 
-    public async subscriptionStateCids(func: (value: any) => void): Promise<void> {
-        return this.graphqlService.subscriptionStateCids(this.store, func);
+    public async subscriptionStateCids(address: string, states: State[], func: (value: any) => void): Promise<void> {
+        return this.graphqlService.subscriptionStateCids(address, states, func);
     }
     
 }

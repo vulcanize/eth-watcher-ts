@@ -37,30 +37,12 @@
 
     <script type="text/javascript">
       var GRAPHQL_URL = 'http://localhost:5000';
-      var addresses = [{
-        addressId: 1,
-        hash: '0xd683fff6aacc2501931dd577a00c0f24b4caab2a9a81113b21f9c1387c36ed35',
-        address: '0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1',
-      }, {
-        addressId: 2,
-        hash: '0xca8fc2da3a921edb01d7c2a9554b0724833fa7be478099b38ed756bee2d7011a',
-        address: '0x117Db93426Ad44cE9774D239389fcB83057Fc88b',
-      }, {
-        addressId: 3,
-        hash: '0xd32e25074d8577f7f0a79d82c14ce87d410aa51e6c1334ec636d10f98dc671df',
-        address: '0x272017314c76110177F4Eac09E04Eb3476788B70'
-      }];
 
       var contracts = [{
         contractId: 1,
         address: '0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1',
         abi: [{ "anonymous": false, "inputs": [{ "indexed": false, "internalType": "string", "name": "message", "type": "string" }], "name": "MessageChanged", "type": "event" }, { "inputs": [], "name": "getMessage", "outputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "message", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "name": "setMessage", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
         events: [1],
-      }, {
-        contractId: 2,
-        address: '0x272017314c76110177F4Eac09E04Eb3476788B70',
-        abi: [{ "inputs": [], "name": "getB", "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "uint256", "name": "_a", "type": "uint256" }], "name": "setA", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
-        states: [1],
       }];
 
       var store = {
@@ -69,16 +51,6 @@
           name: 'MessageChanged'
         }],
         getContracts: () => contracts,
-
-        getAddress: (adr) => addresses.filter((a) => a.address === adr),
-        getAddressById: (adr) => addresses.filter((a) => a.addressId === id),
-        getContractByAddressHash: (hash) => contracts[1], // TODO: fix it
-        getStatesByContractId: (id) => [{ // TODO: fix it
-          stateId: 1,
-          slot: 0,
-          type: 'uint pos0;',
-          variable: 'pos0'
-        }]
       };
 
       var cw = new ContractWatcher(GRAPHQL_URL, store);
@@ -91,7 +63,17 @@
 
       cw.subscriptionHeaderCids((data) => saveData('list-1', data));
       cw.subscriptionReceiptCids((data) => saveData('list-2', data));
-      cw.subscriptionStateCids((data) => saveData('list-3', data));
+
+      cw.subscriptionStateCids(
+        '0x272017314c76110177F4Eac09E04Eb3476788B70', // address
+        [{
+          stateId: 1,
+          slot: 0,
+          type: 'uint pos0;',
+          variable: 'pos0'
+        }],
+        (data) => saveData('list-3', data)
+      );
 
       function saveData(id, data) {
         const el = document.createElement('pre');
