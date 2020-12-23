@@ -217,15 +217,15 @@ describe('processState', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processState(undefined)).toEqual(undefined);
-    expect(await dataService.processState(null)).toEqual(undefined);
-    expect(await dataService.processState({})).toEqual(undefined);
+    expect(await dataService.processState(undefined, undefined)).toEqual(undefined);
+    expect(await dataService.processState(null, null)).toEqual(undefined);
+    expect(await dataService.processState({}, {})).toEqual(undefined);
   });
 
   test('no contracts', async function () {
     const stateLeafKey = "emptyStateLeafKey";
 
-    await dataService.processState({ stateLeafKey });
+    await dataService.processState({ stateLeafKey }, null);
 
     expect(mockGetStore).toBeCalledTimes(1);
     expect(mockGetContractByAddressHash).toBeCalledTimes(1);
@@ -255,7 +255,7 @@ describe('processState', function () {
       }
     }
 
-    const stateCids = await dataService.processState(relatedNode);
+    const stateCids = await dataService.processState(relatedNode, null); // TODO
 
     expect(mockGetStore).toBeCalledTimes(4);
     expect(mockGetContractByAddressHash).toBeCalledTimes(2);

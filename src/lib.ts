@@ -6,7 +6,8 @@ import Event from "./models/contract/event";
 
 type ContractConfig = {
 	address: string;
-    events: Event[];
+    events?: Event[];
+    states?: State[];
     abi?: any; // eslint-disable-line
 }[]
 
@@ -53,8 +54,29 @@ class ContractWatcher  {
         return this.graphqlService.subscriptionReceiptCids(contracts, events, func);
     }
 
-    public async subscriptionStateCids(contract: Contract, states: State[], func: (value: any) => void): Promise<void> {
-        return this.graphqlService.subscriptionStateCids(contract, states, func);
+    public async subscriptionStateCids(contractConfig: ContractConfig, func: (value: any) => void): Promise<void> {
+        const contracts: Contract[] = [];
+        const states: State[] = [];
+        let stateId = 1;
+
+        for(const c of contractConfig) {
+            const stateIds = [];
+            for (const e of c.states) {
+                states.push({
+                    stateId,
+                    slot: e.slot,
+                    type: e.type,
+                    variable: e.variable
+                });
+                stateIds.push(stateId);
+                stateId++;
+            }
+            contracts.push({
+                address: c.address,
+                states: stateIds,
+            } as Contract);
+        }
+        return this.graphqlService.subscriptionStateCids(contracts, states, func);
     }
     
 }

@@ -174,7 +174,7 @@ VALUES
 		const header: HeaderCids = await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId);
 		await this.processTransaction(relatedNode?.ethTransactionCidByTxId, header.id);
 
-			if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
+		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
 			return;
 		}
@@ -188,7 +188,6 @@ VALUES
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
 		for (const d of decoded) {
 			const event = contractAbi.find((a) => a.inputs.map((i) => i.name).includes(d.name));
-			console.log('event to', event);
 			if (!event) {
 				continue;
 			}
@@ -301,7 +300,7 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode): Promise<StateCids> {
+	public async processState(relatedNode, decoded): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
@@ -324,7 +323,7 @@ VALUES
 					type: 'state',
 					id: state.stateId,
 				});
-				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
+				const tableOptions = toTableOptions(tableName, structure)
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
@@ -533,8 +532,13 @@ VALUES
 			}
 
 			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
-				for (const state of ethHeader.stateCidsByHeaderId.nodes) {  
-					await dataService.processState(state);
+				for (const state of ethHeader.stateCidsByHeaderId.nodes) {
+					const result = await DecodeService.decodeStateCid(
+						state,
+						() => Store.getStore().getContracts(),
+						() => Store.getStore().getStates(),
+					);
+					await dataService.processState(result.relatedNode, result.decoded);
 				}
 			}
 		}

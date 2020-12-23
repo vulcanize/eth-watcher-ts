@@ -57,13 +57,13 @@
         (data) => saveData('list-2', data));
 
       cw.subscriptionStateCids(
-        {
-          address: '0x272017314c76110177F4Eac09E04Eb3476788B70',
-        },
         [{
-          slot: 0,
-          type: 'uint pos0;',
-          variable: 'pos0'
+          address: '0x272017314c76110177F4Eac09E04Eb3476788B70',
+          states: [{
+            slot: 0,
+            type: 'uint pos0;',
+            variable: 'pos0'
+          }],
         }],
         (data) => saveData('list-3', data)
       );
