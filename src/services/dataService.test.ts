@@ -273,8 +273,8 @@ describe('processEvent', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processEvent(undefined)).toEqual(undefined);
-    expect(await dataService.processEvent(null)).toEqual(undefined);
+    expect(await dataService.processEvent(undefined, undefined)).toEqual(undefined);
+    expect(await dataService.processEvent(null, null)).toEqual(undefined);
   });
 
   test('no logContracts and no target', async function () {
@@ -292,7 +292,7 @@ describe('processEvent', function () {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       }
     };
-    const resp1 = await dataService.processEvent(relatedNode1);
+    const resp1 = await dataService.processEvent(relatedNode1, null);  // TODO
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith(relatedNode1.ethTransactionCidByTxId.ethHeaderCidByHeaderId)
@@ -308,7 +308,7 @@ describe('processEvent', function () {
         "veryUniqueAddress"
       ]
     };
-    const resp2 = await dataService.processEvent(relatedNode2);
+    const resp2 = await dataService.processEvent(relatedNode2, null); // TODO
     expect(mockGetContracts).toBeCalledTimes(1);
     expect(resp2).toEqual(undefined);
   });
@@ -339,7 +339,7 @@ describe('processEvent', function () {
       blockByMhKey: {
         data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
       },
-    });
+    }, null); // TODO
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith("0xheaderCidByHeaderId")

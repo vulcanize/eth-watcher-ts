@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
+import { keccak256, keccakFromHexString, rlp, BN } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -23,11 +23,9 @@ import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepos
 import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
-
-const BigNumber = require('bignumber.js');
+import DecodeService from './decodeService';
 
 const LIMIT = 1000;
-
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -168,8 +166,7 @@ VALUES
 		return pgType;
 	}
 
-	public async processEvent(relatedNode): Promise<void> {
-
+	public async processEvent(relatedNode, decoded): Promise<void> {
 		if (!relatedNode) {
 			return;
 		}
@@ -177,7 +174,7 @@ VALUES
 		const header: HeaderCids = await this.processHeader(relatedNode?.ethTransactionCidByTxId?.ethHeaderCidByHeaderId);
 		await this.processTransaction(relatedNode?.ethTransactionCidByTxId, header.id);
 
-		if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
+			if (!relatedNode.logContracts || !relatedNode.logContracts.length) {
 			// TODO: mark as done?
 			return;
 		}
@@ -187,74 +184,25 @@ VALUES
 			return;
 		}
 
+		const contractAbi = target.abi as ABI;
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
-		for (const e of targetEvents) {
-			const contractAbi = target.abi as ABI;
-			const event = contractAbi.find((a) => a.name === e.name);
-
+		for (const d of decoded) {
+			const event = contractAbi.find((a) => a.inputs.map((i) => i.name).includes(d.name));
+			console.log('event to', event);
 			if (!event) {
 				continue;
 			}
 
-			const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
-			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+			const e = targetEvents.find((e) => e.name === event.name);
+			await this.addEvent(
+				e.eventId,
+				target.contractId,
+				decoded,
+				relatedNode.mhKey,
+				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+			);
 
-			console.log('payload', payload);
-			console.log('hash', hash);
-
-			if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
-				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
-
-				if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
-					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-
-					// console.log(decoded[0].toString('hex'));
-					// console.log(decoded[1].toString('hex'));
-					// console.log(decoded[2].toString('hex'));
-
-					const addressFromBlock = decoded[3][index][0].toString('hex');
-					console.log('address', addressFromBlock);
-
-					const hashFromBlock = decoded[3][index][1][0].toString('hex');
-					console.log(hashFromBlock);
-
-					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
-					const indexedEvents = event.inputs.filter(input => input.indexed);
-
-					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
-
-					const array: ABIInputData[] = [];
-					indexedEvents.forEach((event, index) => {
-						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
-
-						try {
-							array.push({
-								name: event.name,
-								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
-							});
-						} catch (e) {
-							console.log('Error wtih', event.name, event.internalType, e.message);
-						}
-					});
-			
-					notIndexedEvents.forEach((event, index) => {
-						array.push({
-							name: event.name,
-							value: messages[index],
-						});
-					});
-
-					await this.addEvent(
-						e.eventId,
-						target.contractId,
-						array,
-						relatedNode.mhKey,
-						relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
-					);
-					console.log('Event saved');
-				}
-			}
+			console.log('Event saved');
 		}
 	}
 
@@ -313,7 +261,12 @@ VALUES
 
 			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
 				for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
-					await dataService.processEvent(tx.receiptCidByTxId);
+					const result = await DecodeService.decodeReceiptCid(
+						tx.receiptCidByTxId,
+						() => Store.getStore().getContracts(),
+						() => Store.getStore().getEvents(),
+					);
+					await dataService.processEvent(result.relatedNode, result.decoded);
 				}
 			}
 		}
@@ -428,8 +381,8 @@ VALUES
 						const hashes = [storageLeafKey];
 						const correctStorageLeafKey = DataService._getKeyForMapping(address.address, state.slot, false);
 						for (let i = 1; i < structure.value.fields.length; i++) {
-							const x = new BigNumber(correctStorageLeafKey);
-							const sum = x.plus(i);
+							const x = new BN(correctStorageLeafKey.replace('0x',''), 'hex');
+							const sum = x.addn(i);
 							const key = '0x' + sum.toString(16);
 							hashes.push('0x' + keccakFromHexString(key).toString('hex'));
 						}
