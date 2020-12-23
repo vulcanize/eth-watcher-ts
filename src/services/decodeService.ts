@@ -1,27 +1,15 @@
 import * as abi from 'ethereumjs-abi';
-import { keccak256, keccakFromHexString, rlp, BN } from 'ethereumjs-util';
+import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
 import { toStructure } from './dataTypeParser';
-
-type ABIInput = {
-	name: string;
-	type: string;
-	indexed: boolean;
-	internalType: string;
-}
+import { ABI } from "../types/abi";
 
 type ABIInputData = {
 	name: string;
 	value?: any; // eslint-disable-line
 }
-
-type ABI = Array<{
-	name: string;
-	type: string;
-	inputs: ABIInput[];
-}>
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0

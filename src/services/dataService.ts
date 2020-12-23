@@ -24,6 +24,7 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
+import { ABI, ABIInput } from "../types/abi";
 
 const LIMIT = 1000;
 
@@ -43,23 +44,10 @@ const INDEX = [
 	'000000000000000000000000000000000000000000000000000000000000000c', // 12
 ];
 
-type ABIInput = {
-	name: string;
-	type: string;
-	indexed: boolean;
-	internalType: string;
-}
-
 type ABIInputData = {
 	name: string;
 	value?: any; // eslint-disable-line
 }
-
-type ABI = Array<{
-	name: string;
-	type: string;
-	inputs: ABIInput[];
-}>
 
 export default class DataService {
 

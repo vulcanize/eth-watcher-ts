@@ -3,23 +3,21 @@ import GraphqlClient from "./graphqlClient";
 import Contract from "./models/contract/contract";
 import State from "./models/contract/state";
 import Event from "./models/contract/event";
+import { ABI } from "./types/abi";
 
 type ContractConfig = {
 	address: string;
     events?: Event[];
+    abi?: ABI;
     states?: State[];
-    abi?: any; // eslint-disable-line
-}[]
+};
 
 class ContractWatcher  {
     private graphqlService: GraphqlService;
-    private store;
 
-    public constructor(url: string, store) {
+    public constructor(url: string) {
         const graphqlClient = new GraphqlClient(url, null);
         this.graphqlService = new GraphqlService(graphqlClient);
-
-        this.store = store;
     }
 
     public async ethHeaderCidById(block: number): Promise<any> {
@@ -30,12 +28,12 @@ class ContractWatcher  {
         return this.graphqlService.subscriptionHeaderCids(func);
     }
 
-    public async subscriptionReceiptCids(contractConfig: ContractConfig, func: (value: any) => void): Promise<void> {
+    public async subscriptionReceiptCids(contractConfigs: ContractConfig[], func: (value: any) => void): Promise<void> {
         const contracts: Contract[] = [];
         const events: Event[] = [];
         let eventId = 1;
 
-        for(const c of contractConfig) {
+        for(const c of contractConfigs) {
             const eventIds = [];
             for (const e of c.events) {
                 events.push({
@@ -54,12 +52,12 @@ class ContractWatcher  {
         return this.graphqlService.subscriptionReceiptCids(contracts, events, func);
     }
 
-    public async subscriptionStateCids(contractConfig: ContractConfig, func: (value: any) => void): Promise<void> {
+    public async subscriptionStateCids(contractConfigs: ContractConfig[], func: (value: any) => void): Promise<void> {
         const contracts: Contract[] = [];
         const states: State[] = [];
         let stateId = 1;
 
-        for(const c of contractConfig) {
+        for(const c of contractConfigs) {
             const stateIds = [];
             for (const e of c.states) {
                 states.push({
