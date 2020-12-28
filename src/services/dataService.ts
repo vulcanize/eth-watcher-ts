@@ -154,8 +154,8 @@ VALUES
 		return pgType;
 	}
 
-	public async processEvent(relatedNode, decoded): Promise<void> {
-		if (!relatedNode) {
+	public async processEvent(relatedNode, decoded = []): Promise<void> {
+		if (!relatedNode || !decoded) {
 			return;
 		}
 
@@ -184,7 +184,7 @@ VALUES
 			await this.addEvent(
 				e.eventId,
 				target.contractId,
-				decoded,
+				d.value,
 				relatedNode.mhKey,
 				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
 			);
@@ -253,7 +253,7 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getEvents(),
 					);
-					await dataService.processEvent(result.relatedNode, result.decoded);
+					await dataService.processEvent(result?.relatedNode, result?.decoded);
 				}
 			}
 		}
@@ -288,7 +288,7 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode, decoded): Promise<StateCids> {
+	public async processState(relatedNode, todo): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;

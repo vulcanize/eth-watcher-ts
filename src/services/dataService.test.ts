@@ -233,8 +233,7 @@ describe('processState', function () {
     expect(mockGetStatesByContractId).not.toBeCalled();
   });
 
-  // TODO: fix test
-  test.skip('check uint', async function () {
+  test('check uint', async function () {
     dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
       return null
     });
@@ -247,9 +246,9 @@ describe('processState', function () {
       },
       storageCidsByStateId: {
         nodes: [{
-          storageLeafKey: "0x471ccdcb79bddea38175f8cc115b52365f2c864200fbce48e994511bb9c6006f",
+          storageLeafKey: "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
           blockByMhKey: {
-            data: "c512c2345678",
+            data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
           },
         }]
       }
@@ -261,7 +260,7 @@ describe('processState', function () {
     expect(mockGetContractByAddressHash).toBeCalledTimes(2);
     expect(mockGetContractByAddressHash).toBeCalledWith(stateLeafKey);
     expect(mockGetStatesByContractId).toBeCalledTimes(1);
-    expect(dataService.addState).toBeCalledTimes(2);
+    expect(dataService.addState).toBeCalledTimes(1);
   });
 });
 
@@ -292,7 +291,10 @@ describe('processEvent', function () {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       }
     };
-    const resp1 = await dataService.processEvent(relatedNode1, null);  // TODO
+    const resp1 = await dataService.processEvent(relatedNode1, [{
+      name: 'MessageChanged',
+      value: 'Test'
+    }]);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith(relatedNode1.ethTransactionCidByTxId.ethHeaderCidByHeaderId)
@@ -308,7 +310,10 @@ describe('processEvent', function () {
         "veryUniqueAddress"
       ]
     };
-    const resp2 = await dataService.processEvent(relatedNode2, null); // TODO
+    const resp2 = await dataService.processEvent(relatedNode2, [{
+      name: 'MessageChanged',
+      value: 'Test'
+    }]);
     expect(mockGetContracts).toBeCalledTimes(1);
     expect(resp2).toEqual(undefined);
   });
@@ -339,7 +344,10 @@ describe('processEvent', function () {
       blockByMhKey: {
         data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
       },
-    }, null); // TODO
+    }, [{
+      name: 'MessageChanged',
+      value: 'Test'
+    }]);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith("0xheaderCidByHeaderId")
