@@ -17,9 +17,9 @@ jobs:
       - name: Run docker build
         run: make docker-build
       - name: Tag docker image
-        run: docker tag vulcanize/contract-watcher-js docker.pkg.github.com/vulcanize/contract-watcher-js/contract-watcher-js:${{steps.vars.outputs.sha}}
+        run: docker tag vulcanize/eth-watcher-ts docker.pkg.github.com/vulcanize/eth-watcher-ts/contract-watcher-js:${{steps.vars.outputs.sha}}
       - name: Docker Login
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login https://docker.pkg.github.com -u vulcanize --password-stdin
       - name: Docker Push
-        run: docker push docker.pkg.github.com/vulcanize/contract-watcher-js/contract-watcher-js:${{steps.vars.outputs.sha}}
+        run: docker push docker.pkg.github.com/vulcanize/eth-watcher-ts/contract-watcher-js:${{steps.vars.outputs.sha}}
 
