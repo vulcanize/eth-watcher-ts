@@ -21,7 +21,11 @@ import GraphqlClient from './graphqlClient';
 		const dataService = new DataService();
 
 		if (env.ENABLE_EVENT_WATCHER) {
-			graphqlService.subscriptionReceiptCids(Store.getStore(), (data) => dataService.processEvent(data?.data?.listen?.relatedNode)); // async
+			graphqlService.subscriptionReceiptCids( // async
+				() => Store.getStore().getContracts(),
+				() => Store.getStore().getEvents(),
+				(data) => dataService.processEvent(data?.relatedNode, data?.decoded)
+			);
 		} else {
 			console.info('Event watcher is not enabled');
 		}
@@ -35,8 +39,11 @@ import GraphqlClient from './graphqlClient';
 		}
 
 		if (env.ENABLE_STORAGE_WATCHER) {
-			// TODO: fix params
-			graphqlService.subscriptionStateCids(null, null, (data) => dataService.processState(data?.data?.listen?.relatedNode)); // async
+			graphqlService.subscriptionStateCids( // async
+				() => Store.getStore().getContracts(),
+				() => Store.getStore().getStates(),
+				(data) => dataService.processState(data?.relatedNode, data?.decoded)
+			);
 		} else {
 			console.info('Storage watcher is not enabled');
 		}
