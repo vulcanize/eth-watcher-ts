@@ -94,7 +94,7 @@ export default class DataService {
 				value: mhKey,
 				isStrict: true,
 			},
-			...data]);
+			data]);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
@@ -184,7 +184,7 @@ VALUES
 			await this.addEvent(
 				e.eventId,
 				target.contractId,
-				d.value,
+				d,
 				relatedNode.mhKey,
 				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
 			);
