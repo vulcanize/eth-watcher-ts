@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+  </head>
+  <body>
+    <script type="text/javascript" src="https://bundle.run/buffer@6.0.3"></script>
+    <script>
+      window.Buffer = buffer.Buffer; // move to webpack
+    </script>
+    <script type="text/javascript" src="./bundle.js"></script>
+
+    <h1>Test Page</h1>
+    <b>require <a href='https://chrome.google.com/webstore/detail/lfhmikememgdcahcdlaciloancbhjino'>CORS Unblock</a> extension</b>
+
+    <h2>Init</h2>
+    <pre>var cw = new ContractWatcher(GRAPHQL_URL);</pre>
+    <h2>Test</h2>
+    <pre>ETH_RPC_ACCOUNTS=1 seth send --gas 0xffff 0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1 'setMessage(string)' '"xyz"'</pre>
+
+    <h2>Get block by number</h2>
+    <pre>await cw.ethHeaderCidById(blockNumber);</pre>
+    <pre id='bn200'>[result]</pre>
+
+    <h2>Add subscription for HeaderCids</h2>
+    <pre>cw.subscriptionHeaderCids(f)</pre>
+    <div id='list-1'></div>
+
+    <h2>Add subscription for ReceiptCids</h2>
+    <pre>cw.subscriptionReceiptCids(f)</pre>
+    <div id='list-2'></div>
+
+    <h2>Add subscription for StateCids</h2>
+    <pre>cw.subscriptionStateCids(f)</pre>
+    <div id='list-3'></div>
+
+    <script type="text/javascript">
+      var GRAPHQL_URL = 'http://localhost:5020';
+      var cw = new ContractWatcher(GRAPHQL_URL);
+      console.log(cw);
+
+      cw.ethHeaderCidById(200)
+        .then((data) => {
+          document.getElementById('bn200').innerText = JSON.stringify(data, null, 2);
+        });
+
+      cw.subscriptionHeaderCids((data) => saveData('list-1', data));
+      cw.subscriptionReceiptCids(
+        [{
+          address: '0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1',
+          abi: [{ "anonymous": false, "inputs": [{ "indexed": false, "internalType": "string", "name": "message", "type": "string" }], "name": "MessageChanged", "type": "event" }, { "inputs": [], "name": "getMessage", "outputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "message", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "stateMutability": "view", "type": "function" }, { "inputs": [{ "internalType": "string", "name": "_message", "type": "string" }], "name": "setMessage", "outputs": [], "stateMutability": "nonpayable", "type": "function" }],
+          events: [{
+            name: 'MessageChanged',
+          }],
+        }],
+        (data) => saveData('list-2', data));
+
+      cw.subscriptionStateCids(
+        [{
+          address: '0x272017314c76110177F4Eac09E04Eb3476788B70',
+          states: [{
+            slot: 0,
+            type: 'uint pos0;',
+            variable: 'pos0'
+          }],
+        }],
+        (data) => saveData('list-3', data)
+      );
+
+      function saveData(id, data) {
+        const el = document.createElement('pre');
+        el.innerText = JSON.stringify(data, null, 2);
+        document.getElementById(id).appendChild(el);
+      }
+    </script>
+  </body>
+</html>

@@ -1,46 +1,50 @@
+import GraphqlClient from '../graphqlClient';
 import GraphqlRepository from '../repositories/graphqlRepository';
-import DataService from './dataService';
+import State from '../models/contract/state';
+import Contract from '../models/contract/contract';
+import Event from '../models/contract/event';
+import DecodeService from '../services/decodeService';
 
 export default class GraphqlService {
+	private graphqlRepository: GraphqlRepository;
+
+	constructor (graphqlClient: GraphqlClient) {
+		this.graphqlRepository = GraphqlRepository.getRepository(graphqlClient);
+	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<any> {
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
+		return this.graphqlRepository.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async ethHeaderCidWithStateByBlockNumber(blockNumber: string | number): Promise<any> {
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.ethHeaderCidWithStateByBlockNumber(blockNumber);
+		return this.graphqlRepository.ethHeaderCidWithStateByBlockNumber(blockNumber);
 	}
-
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async ethHeaderCidById(headerId: number): Promise<any> {
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.ethHeaderCidById(headerId);
+		return this.graphqlRepository.ethHeaderCidById(headerId);
 	}
 
-	public async subscriptionReceiptCids(): Promise<void> {
-		const dataService = new DataService();
-
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.subscriptionReceiptCids((data) => dataService.processEvent(data?.data?.listen?.relatedNode))
+	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value: any) => void): Promise<void> {
+		return this.graphqlRepository.subscriptionReceiptCids(async (data) => {
+			const relatedNode = data?.data?.listen?.relatedNode;
+			const result = await DecodeService.decodeReceiptCid(relatedNode, contracts, events);
+			return func(result);
+		});
 	}
 
-	public async subscriptionHeaderCids(): Promise<void> {
-		const dataService = new DataService();
-
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.subscriptionHeaderCids((data) => dataService.processHeader(data?.data?.listen?.relatedNode))
+	public async subscriptionHeaderCids(func: (value: any) => void): Promise<void> {
+		return this.graphqlRepository.subscriptionHeaderCids(func);
 	}
 
-	public async subscriptionStateCids(): Promise<void> {
-		const dataService = new DataService();
-
-		const graphqlRepository: GraphqlRepository = GraphqlRepository.getRepository();
-		return graphqlRepository.subscriptionStateCids((data) => dataService.processState(data?.data?.listen?.relatedNode))
+	public async subscriptionStateCids(contracts: Contract[] | Function, states: State[] | Function, func: (value: any) => void): Promise<void> {
+		return this.graphqlRepository.subscriptionStateCids(async (data) => {
+			const relatedNode = data?.data?.listen?.relatedNode;
+			const result = await DecodeService.decodeStateCid(relatedNode, contracts, states);
+			return func(result);
+		});
 	}
 
 }

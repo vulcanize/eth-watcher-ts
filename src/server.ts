@@ -2,10 +2,12 @@ import { createServer } from 'http';
 import Store from './store';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import postgraphile from 'postgraphile';
-
+import * as ws from 'ws';
 import App from './app';
 import env from './env';
 import GraphqlService from './services/graphqlService';
+import DataService from './services/dataService';
+import GraphqlClient from './graphqlClient';
 
 (async (): Promise<void> => {
 	const connectionOptions = await getConnectionOptions();
@@ -14,10 +16,16 @@ import GraphqlService from './services/graphqlService';
 
 		Store.init();
 
-		const graphqlService = new GraphqlService();
+		const graphqlClient = new GraphqlClient(env.GRAPHQL_URI, ws);
+		const graphqlService = new GraphqlService(graphqlClient);
+		const dataService = new DataService();
 
 		if (env.ENABLE_EVENT_WATCHER) {
-			graphqlService.subscriptionReceiptCids(); // async
+			graphqlService.subscriptionReceiptCids( // async
+				() => Store.getStore().getContracts(),
+				() => Store.getStore().getEvents(),
+				(data) => dataService.processEvent(data?.relatedNode, data?.decoded)
+			);
 		} else {
 			console.info('Event watcher is not enabled');
 		}
@@ -25,13 +33,17 @@ import GraphqlService from './services/graphqlService';
 		if (env.ENABLE_HEADER_WATCHER && env.ENABLE_EVENT_WATCHER) {
 			console.log('Header watcher will work via Event watcher');
 		} else if (env.ENABLE_HEADER_WATCHER && !env.ENABLE_EVENT_WATCHER) {
-			graphqlService.subscriptionHeaderCids(); // async
+			graphqlService.subscriptionHeaderCids((data) => dataService.processHeader(data?.data?.listen?.relatedNode)); // async
 		} else {
 			console.info('Header watcher is not enabled');
 		}
 
 		if (env.ENABLE_STORAGE_WATCHER) {
-			graphqlService.subscriptionStateCids(); // async
+			graphqlService.subscriptionStateCids( // async
+				() => Store.getStore().getContracts(),
+				() => Store.getStore().getStates(),
+				(data) => dataService.processState(data?.relatedNode, data?.decoded)
+			);
 		} else {
 			console.info('Storage watcher is not enabled');
 		}

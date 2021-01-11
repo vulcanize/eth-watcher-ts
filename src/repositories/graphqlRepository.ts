@@ -6,16 +6,16 @@ export default class GraphqlRepository {
 
 	private graphqlClient: GraphqlClient;
 
-	public static getRepository(): GraphqlRepository {
+	public static getRepository(graphqlClient: GraphqlClient): GraphqlRepository {
 		if (!GraphqlRepository.repository) {
-			GraphqlRepository.repository = new GraphqlRepository();
+			GraphqlRepository.repository = new GraphqlRepository(graphqlClient);
 		}
 
 		return GraphqlRepository.repository;
 	}
 	
-	public constructor() {
-		this.graphqlClient = new GraphqlClient();
+	public constructor(graphqlClient: GraphqlClient) {
+		this.graphqlClient = graphqlClient;
 	}
 
 	public ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<unknown> {

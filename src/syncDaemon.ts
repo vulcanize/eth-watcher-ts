@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as cron from 'node-cron';
+import * as ws from 'ws';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
 import StateProgressRepository from './repositories/data/stateProgressRepository';
@@ -13,6 +14,7 @@ import Store from './store';
 import DataService from './services/dataService';
 import GraphqlService from './services/graphqlService';
 import env from './env';
+import GraphqlClient from './graphqlClient';
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);
@@ -25,7 +27,8 @@ console.log('Cron daemon is started');
 	createConnection(connectionOptions).then(async () => {
 
 		const dataService = new DataService();
-		const graphqlService = new GraphqlService();
+		const graphqlClient = new GraphqlClient(env.GRAPHQL_URI, ws);
+		const graphqlService = new GraphqlService(graphqlClient);
 
 		if (env.ENABLE_EVENT_WATCHER) {
 			let statusEventSync = 'waiting';

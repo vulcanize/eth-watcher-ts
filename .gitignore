@@ -3,3 +3,4 @@ dist
 .env
 ormconfig.json
 config.toml
+public/bundle.*

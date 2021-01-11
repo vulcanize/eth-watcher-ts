@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
+import { keccak256, keccakFromHexString, rlp, BN } from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -20,14 +20,13 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
-import { MappingStructure, SimpleStructure, toStructure, toTableOptions } from './dataTypeParser';
+import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
-
-const BigNumber = require('bignumber.js');
+import DecodeService from './decodeService';
+import { ABI, ABIInput } from "../types/abi";
 
 const LIMIT = 1000;
-
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -45,23 +44,10 @@ const INDEX = [
 	'000000000000000000000000000000000000000000000000000000000000000c', // 12
 ];
 
-type ABIInput = {
-	name: string;
-	type: string;
-	indexed: boolean;
-	internalType: string;
-}
-
 type ABIInputData = {
 	name: string;
 	value?: any; // eslint-disable-line
 }
-
-type ABI = Array<{
-	name: string;
-	type: string;
-	inputs: ABIInput[];
-}>
 
 export default class DataService {
 
@@ -108,7 +94,7 @@ export default class DataService {
 				value: mhKey,
 				isStrict: true,
 			},
-			...data]);
+			data]);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
@@ -168,9 +154,8 @@ VALUES
 		return pgType;
 	}
 
-	public async processEvent(relatedNode): Promise<void> {
-
-		if (!relatedNode) {
+	public async processEvent(relatedNode, decoded = []): Promise<void> {
+		if (!relatedNode || !decoded) {
 			return;
 		}
 
@@ -187,74 +172,24 @@ VALUES
 			return;
 		}
 
+		const contractAbi = target.abi as ABI;
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
-		for (const e of targetEvents) {
-			const contractAbi = target.abi as ABI;
-			const event = contractAbi.find((a) => a.name === e.name);
-
+		for (const d of decoded) {
+			const event = contractAbi.find((a) => a.inputs.map((i) => i.name).includes(d.name));
 			if (!event) {
 				continue;
 			}
 
-			const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
-			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+			const e = targetEvents.find((e) => e.name === event.name);
+			await this.addEvent(
+				e.eventId,
+				target.contractId,
+				d,
+				relatedNode.mhKey,
+				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+			);
 
-			console.log('payload', payload);
-			console.log('hash', hash);
-
-			if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
-				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
-
-				if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
-					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-
-					// console.log(decoded[0].toString('hex'));
-					// console.log(decoded[1].toString('hex'));
-					// console.log(decoded[2].toString('hex'));
-
-					const addressFromBlock = decoded[3][index][0].toString('hex');
-					console.log('address', addressFromBlock);
-
-					const hashFromBlock = decoded[3][index][1][0].toString('hex');
-					console.log(hashFromBlock);
-
-					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
-					const indexedEvents = event.inputs.filter(input => input.indexed);
-
-					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
-
-					const array: ABIInputData[] = [];
-					indexedEvents.forEach((event, index) => {
-						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
-
-						try {
-							array.push({
-								name: event.name,
-								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
-							});
-						} catch (e) {
-							console.log('Error wtih', event.name, event.internalType, e.message);
-						}
-					});
-			
-					notIndexedEvents.forEach((event, index) => {
-						array.push({
-							name: event.name,
-							value: messages[index],
-						});
-					});
-
-					await this.addEvent(
-						e.eventId,
-						target.contractId,
-						array,
-						relatedNode.mhKey,
-						relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
-					);
-					console.log('Event saved');
-				}
-			}
+			console.log('Event saved');
 		}
 	}
 
@@ -313,7 +248,12 @@ VALUES
 
 			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
 				for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
-					await dataService.processEvent(tx.receiptCidByTxId);
+					const result = await DecodeService.decodeReceiptCid(
+						tx.receiptCidByTxId,
+						() => Store.getStore().getContracts(),
+						() => Store.getStore().getEvents(),
+					);
+					await dataService.processEvent(result?.relatedNode, result?.decoded);
 				}
 			}
 		}
@@ -348,7 +288,7 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode): Promise<StateCids> {
+	public async processState(relatedNode, todo): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
@@ -356,7 +296,7 @@ VALUES
 
 		console.log(JSON.stringify(relatedNode, null, 2));
 
-		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey); // stateLeafKey keccak co.addres . sender 
+		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -371,7 +311,7 @@ VALUES
 					type: 'state',
 					id: state.stateId,
 				});
-				const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
+				const tableOptions = toTableOptions(tableName, structure)
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
@@ -428,8 +368,8 @@ VALUES
 						const hashes = [storageLeafKey];
 						const correctStorageLeafKey = DataService._getKeyForMapping(address.address, state.slot, false);
 						for (let i = 1; i < structure.value.fields.length; i++) {
-							const x = new BigNumber(correctStorageLeafKey);
-							const sum = x.plus(i);
+							const x = new BN(correctStorageLeafKey.replace('0x',''), 'hex');
+							const sum = x.addn(i);
 							const key = '0x' + sum.toString(16);
 							hashes.push('0x' + keccakFromHexString(key).toString('hex'));
 						}
@@ -513,7 +453,7 @@ VALUES
 
 					const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 					const decoded: any = rlp.decode(buffer); // eslint-disable-line
-					const value = abi.rawDecode([ structure.kind ], Buffer.from(decoded[1], 'hex'))[0];
+					const value = abi.rawDecode([ structure.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
 
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
@@ -580,8 +520,13 @@ VALUES
 			}
 
 			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
-				for (const state of ethHeader.stateCidsByHeaderId.nodes) {  
-					await dataService.processState(state);
+				for (const state of ethHeader.stateCidsByHeaderId.nodes) {
+					const result = await DecodeService.decodeStateCid(
+						state,
+						() => Store.getStore().getContracts(),
+						() => Store.getStore().getStates(),
+					);
+					await dataService.processState(result.relatedNode, result.decoded);
 				}
 			}
 		}
@@ -759,7 +704,7 @@ VALUES
 		});
 	}
 
-	private static _getKeyForFixedType(slot: number): string {
+	public static _getKeyForFixedType(slot: number): string {
 		if (!INDEX[slot]) {
 			return null;
 		}

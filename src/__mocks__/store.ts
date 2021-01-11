@@ -19,11 +19,9 @@ export const eventsByContractId = {
 
 export const statesByContractId = {
   1: [{
-    slot: "slot1",
-    type: "uint",
-  }, {
-    slot: "slot2",
-    type: "uint",
+    slot: 0,
+    type: 'uint pos0;',
+    variable: 'pos0'
   }]
 };
 
@@ -45,7 +43,17 @@ export const mockGetContracts = jest.fn().mockImplementation(function (): Contra
       events: [1],
       abi: [{
         name: 'ename',
-        inputs: [],
+        inputs: [{
+          "anonymous": false,
+          "inputs": [{
+            "indexed": false,
+            "internalType": "string",
+            "name": "message",
+            "type": "string"
+          }],
+          "name": "MessageChanged",
+          "type": "event"
+        }],
       }],
     } as Contract,
   ]
