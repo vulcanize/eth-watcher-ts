@@ -32,11 +32,11 @@ export default class GraphqlService {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeReceiptCid(relatedNode, contracts, events);
 			return func(result);
-		});
+		}, (error) => {console.log(error)});
 	}
 
 	public async subscriptionHeaderCids(func: (value: any) => void): Promise<void> {
-		return this.graphqlRepository.subscriptionHeaderCids(func);
+		return this.graphqlRepository.subscriptionHeaderCids(func, (error) => {console.log(error)});
 	}
 
 	public async subscriptionStateCids(contracts: Contract[] | Function, states: State[] | Function, func: (value: any) => void): Promise<void> {
@@ -44,7 +44,7 @@ export default class GraphqlService {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeStateCid(relatedNode, contracts, states);
 			return func(result);
-		});
+		}, (error) => {console.log(error)});
 	}
 
 }

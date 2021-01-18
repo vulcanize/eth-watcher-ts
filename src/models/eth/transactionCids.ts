@@ -40,9 +40,6 @@ export default class TransactionCids {
 	@Column("character varying", { name: "src", length: 66 })
 	src: string;
 
-	@Column("boolean", { name: "deployment" })
-	deployment: boolean;
-
 	@Column("bytea", { name: "tx_data", nullable: true })
 	txData: Buffer | null;
 

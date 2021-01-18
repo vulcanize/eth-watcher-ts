@@ -13,7 +13,7 @@ export default class GraphqlRepository {
 
 		return GraphqlRepository.repository;
 	}
-	
+
 	public constructor(graphqlClient: GraphqlClient) {
 		this.graphqlClient = graphqlClient;
 	}
@@ -121,7 +121,7 @@ export default class GraphqlRepository {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public subscriptionReceiptCids(onNext: (value: any) => void): Promise<void> {
+	public subscriptionReceiptCids(onNext: (value: any) => void, onError: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
 			subscription MySubscription {
 				listen(topic: "receipt_cids") {
@@ -144,7 +144,6 @@ export default class GraphqlRepository {
 						ethTransactionCidByTxId {
 							id
 							cid
-							deployment
 							headerId
 							index
 							mhKey
@@ -177,11 +176,11 @@ export default class GraphqlRepository {
 					}
 				}
 			}
-		`, onNext);
+		`, onNext, onError);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public subscriptionHeaderCids(onNext: (value: any) => void): Promise<void> {
+	public subscriptionHeaderCids(onNext: (value: any) => void, onError: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
 			subscription MySubscription {
 				listen(topic: "header_cids") {
@@ -208,11 +207,11 @@ export default class GraphqlRepository {
 					}
 				}
 			}
-		`, onNext);
+		`, onNext, onError);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public subscriptionStateCids(onNext: (value: any) => void): Promise<void> {
+	public subscriptionStateCids(onNext: (value: any) => void, onError?: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
 			subscription MySubscription {
 				listen(topic: "state_cids") {
@@ -247,7 +246,7 @@ export default class GraphqlRepository {
 					}
 				}
 			}
-		`, onNext);
+		`, onNext, onError);
 	}
 
 }

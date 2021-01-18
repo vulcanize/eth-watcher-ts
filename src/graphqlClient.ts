@@ -61,6 +61,9 @@ export default class GraphqlClient {
 			},
 			error(value) {
 				onError && onError(value);
+			},
+			complete() {
+				console.log('Graphql subscription is completed');
 			}
 		});
 	}

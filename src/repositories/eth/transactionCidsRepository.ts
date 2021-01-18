@@ -6,7 +6,6 @@ export default class TransactionCidsRepository extends Repository<TransactionCid
 
 	public async add(headerId: number, {
 		cid,
-		deployment,
 		index,
 		mhKey,
 		dst,
@@ -16,7 +15,6 @@ export default class TransactionCidsRepository extends Repository<TransactionCid
 	}): Promise<TransactionCids> {
 		return this.save({
 			cid,
-			deployment,
 			headerId,
 			index,
 			mhKey,
