@@ -14,7 +14,8 @@
     "//": "downgrade last migration",
     "migrate:down": "npx ts-node ./node_modules/typeorm/cli.js migration:revert",
     "build-browser-lib": "npx webpack",
-    "static-serve": "npx serve public -p 3000"
+    "static-serve": "npx serve public -p 3000",
+    "cli": "npx ts-node ./cli/getAbi.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.2.0",
