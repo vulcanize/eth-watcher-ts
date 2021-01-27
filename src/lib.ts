@@ -20,8 +20,8 @@ class ContractWatcher  {
         this.graphqlService = new GraphqlService(graphqlClient);
     }
 
-    public async ethHeaderCidById(block: number): Promise<any> {
-        return this.graphqlService.ethHeaderCidById(block);
+    public async ethHeaderCidByBlockNumber(block: number): Promise<any> {
+        return this.graphqlService.ethHeaderCidByBlockNumber(block);
     }
 
     public async subscriptionHeaderCids(func: (value: any) => void): Promise<void> {

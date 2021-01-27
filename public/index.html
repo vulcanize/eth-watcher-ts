@@ -20,7 +20,7 @@
     <pre>ETH_RPC_ACCOUNTS=1 seth send --gas 0xffff 0x40bDf8ed288775f278f5e61E6FDf728bdcaC17A1 'setMessage(string)' '"xyz"'</pre>
 
     <h2>Get block by number</h2>
-    <pre>await cw.ethHeaderCidById(blockNumber);</pre>
+    <pre>await cw.ethHeaderCidByBlockNumber(blockNumber);</pre>
     <pre id='bn200'>[result]</pre>
 
     <h2>Add subscription for HeaderCids</h2>
@@ -40,7 +40,7 @@
       var cw = new ContractWatcher(GRAPHQL_URL);
       console.log(cw);
 
-      cw.ethHeaderCidById(200)
+      cw.ethHeaderCidByBlockNumber(200)
         .then((data) => {
           document.getElementById('bn200').innerText = JSON.stringify(data, null, 2);
         });

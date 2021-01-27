@@ -569,16 +569,16 @@ VALUES
 		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
 		const start = startingHeaderId + (page -1) * limit; // start header id for current page
 
-		const allHeaderIds = Array.from({ length: max - start + 1 }, (_, i) => i + start);
-		const syncedIds= syncedHeaders.map((p) => p.id);
-		const notSyncedIds = allHeaderIds.filter(x => !syncedIds.includes(x));
+		const allHeaderBlockNumbers = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedBlockNumbers= syncedHeaders.map((p) => Number(p.blockNumber));
+		const notSyncedBlockNumbers = allHeaderBlockNumbers.filter(x => !syncedBlockNumbers.includes(x));
 
-		for (const headerId of notSyncedIds) {
-			const header = await graphqlService.ethHeaderCidById(headerId);
-			await dataService.processHeader(header.ethHeaderCidById);
+		for (const blockNumber of notSyncedBlockNumbers) {
+			const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
+			await dataService.processHeader(header);
 		}
 
-		return notSyncedIds;
+		return notSyncedBlockNumbers;
 	}
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
