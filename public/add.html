@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Add Contracts</title>
+</head>
+<body>
+    <header class="sticky">
+        <a href="#" class="logo" tabindex="-1">eth watcher</a>
+        <!-- <a href="#" role="button" tabindex="-1">One</a> -->
+    </header>
+    <div class="container" style="background: #222 center center no-repeat; background-size: cover;">
+        <div class="row">
+            <div class="col-sm"></div>
+            <div class="col-sm-12 col-md-8 col-lg-6" style="height: calc(100vh - 10.25rem); display: flex; align-items: center; flex: 0 1 auto;">
+                <form id="form">
+                    <fieldset>
+                        <legend>List of contracts</legend>
+                        <div class="input-group fluid">
+                            <textarea type="text" value="" id="list" placeholder="0xabc" autocomplete="off" tabindex="1" style="min-width: 300px; min-height: 200px;"></textarea>
+                            <input id="submit"  class="secondary" type="submit" value="Submit" tabindex="2" />
+                        </div>
+                        <p class="hidden" id='msg-valid'>Success: <mark class="tertiary">0x123</mark></mark></p>
+                        <p class="hidden" id='msg-invalid'>Fail: <mark class="secondary">0xabc</mark></p>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="col-sm"></div>
+        </div> 
+    </div>
+    <span class="toast hidden" id="toast">Status updated</span>
+    <footer>
+        <p>
+            eth-watcher-ts | <a href="https://github.com/vulcanize/eth-watcher-ts">Github</a>
+        </p>
+    </footer>
+</body>
+    <script>
+        (function() {
+            const DELAY = 2000;
+            const API_HOST = 'http://localhost:3000';
+
+            const form = document.getElementById('form');
+            form.addEventListener('submit', handleSubmit, false);
+
+            function showToast(time = 3000) {
+                const toast = document.getElementById('toast');
+                
+                toast.className = 'toast';
+                setTimeout(() => {
+                    toast.className += ' hidden';
+                }, time);
+            }
+
+            async function handleSubmit(event) {
+                event.preventDefault();
+
+                const button = document.getElementById('submit');
+                const buttonLabel = button.value;
+                button.setAttribute('disabled', true);
+                button.value = 'wait...';
+                button.className += ' ';
+
+                await process();
+
+                button.value = buttonLabel;
+                button.removeAttribute('disabled');                
+            }
+
+            async function process() {
+                const input = document.getElementById('list');
+
+                const list = (input.value || '').split('\n');
+                if (!list) {
+                    // do nothing
+
+                    return null;
+                }
+
+                hideAllMsgs();
+
+                const res = await callApi('GET', `${API_HOST}/set_contacts?list=${list}`);
+
+                let msg = null;
+                if (res.error) {
+                    msg = document.getElementById('msg-invalid');
+                } else {
+                    msg = document.getElementById('msg-valid');
+                }
+
+                msg.className = '';
+
+                showToast();
+            }
+
+            function hideAllMsgs() {
+                document.getElementById('msg-invalid').className = 'hidden';
+                document.getElementById('msg-valid').className = 'hidden';
+            }
+
+            async function callApi(method, url = '', data = {}) {
+                const response = await fetch(url, {
+                    method,
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    redirect: 'follow',
+                    referrerPolicy: 'no-referrer',
+                });
+
+                if (method === 'POST' || method === 'PUT') {
+                    response.body = JSON.stringify(data);
+                }
+
+                return response.json();
+            }
+        })();
+    </script>
+</html>
