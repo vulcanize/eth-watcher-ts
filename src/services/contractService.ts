@@ -13,9 +13,13 @@ import AddressRepository from '../repositories/data/addressRepository';
 
 export default class ContractService {
 
-	public async loadContracts (): Promise<Contract[]> {
+	public async loadContracts (contractIds?: number[]): Promise<Contract[]> {
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
-		const contracts = await contractRepository.findAll();
+
+		if (!contractIds) {
+			return await contractRepository.findAll();
+		}
+		const contracts = await contractRepository.findByIds(contractIds);
 
 		return contracts;
 	}

@@ -55,9 +55,14 @@ if (!address) {
 })();
 
 (async (): Promise<void> => {
+    runBackfillService([4,5]);
+})();
+
+async function runBackfillService(ids: number[]) {
     // VUL-202 Run backfill service for specific contractIds
-    for(let i = 0; i<3; i++) {
-        const workerProcess = child_process.spawn('npx', ['ts-node', './src/backfillService.ts', i]);
+
+    return new Promise((resolve, reject) => {
+        const workerProcess = child_process.spawn('npx', ['ts-node', './src/backfillService.ts', ...ids]);
         
         workerProcess.stdout.on('data', function (data) {
             console.log('stdout: ' + data);
@@ -68,7 +73,11 @@ if (!address) {
         });
         
         workerProcess.on('close', function (code) {
-            console.log('child process exited with code ' + code);
+            if (code === 0) {
+                resolve(code);
+            } else {
+                reject(code);
+            }
         });
-    }
-})();
+    })
+}
