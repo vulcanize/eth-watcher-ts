@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+const child_process = require('child_process');
 
 const args = process.argv.slice(2);
 
@@ -51,4 +52,23 @@ if (!address) {
     const blockNumber = firstTx.blockNumber;
 
     console.log('First block number', blockNumber);
+})();
+
+(async (): Promise<void> => {
+    // VUL-202 Run backfill service for specific contractIds
+    for(let i = 0; i<3; i++) {
+        const workerProcess = child_process.spawn('npx', ['ts-node', './src/backfillService.ts', i]);
+        
+        workerProcess.stdout.on('data', function (data) {
+            console.log('stdout: ' + data);
+        });
+        
+        workerProcess.stderr.on('data', function (data) {
+            console.log('stderr: ' + data);
+        });
+        
+        workerProcess.on('close', function (code) {
+            console.log('child process exited with code ' + code);
+        });
+    }
 })();
