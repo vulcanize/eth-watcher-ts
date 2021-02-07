@@ -39,7 +39,12 @@
     <script>
         (function() {
             const DELAY = 2000;
-            const API_HOST = 'http://localhost:3000';
+            const API_HOST = 'http://localhost:3000/v1';
+            const apikey = ''; // TODO: set etherscan api key
+
+            if (!apikey || apikey === '') {
+                alert('Insert Etherscan API key');
+            }
 
             const form = document.getElementById('form');
             form.addEventListener('submit', handleSubmit, false);
@@ -71,8 +76,8 @@
             async function process() {
                 const input = document.getElementById('list');
 
-                const list = (input.value || '').split('\n');
-                if (!list) {
+                const addresses = (input.value || '').split('\n');
+                if (!addresses) {
                     // do nothing
 
                     return null;
@@ -80,16 +85,19 @@
 
                 hideAllMsgs();
 
-                const res = await callApi('GET', `${API_HOST}/set_contacts?list=${list}`);
-
+                const res = await callApi('POST', `${API_HOST}/contracts`, { apikey, addresses });
+                console.log(res)
                 let msg = null;
-                if (res.error) {
+                if (res.data.fail && res.data.fail.length) {
                     msg = document.getElementById('msg-invalid');
-                } else {
+                    msg.innerHTML = `<mark class="secondary">${res.data.fail.join('\n')}</mark>`;
+                    msg.className = '';
+                } 
+                if (res.data.success && res.data.success.length) {
                     msg = document.getElementById('msg-valid');
+                    msg.innerHTML = `<mark class="tertiary">${res.data.success.join('\n')}</mark>`;
+                    msg.className = '';
                 }
-
-                msg.className = '';
 
                 showToast();
             }
@@ -100,7 +108,7 @@
             }
 
             async function callApi(method, url = '', data = {}) {
-                const response = await fetch(url, {
+                const request = {
                     method,
                     mode: 'cors',
                     headers: {
@@ -108,11 +116,13 @@
                     },
                     redirect: 'follow',
                     referrerPolicy: 'no-referrer',
-                });
+                };
 
                 if (method === 'POST' || method === 'PUT') {
-                    response.body = JSON.stringify(data);
+                    request.body = JSON.stringify(data);
                 }
+
+                const response = await fetch(url, request);
 
                 return response.json();
             }

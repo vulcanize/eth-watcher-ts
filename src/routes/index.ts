@@ -9,5 +9,8 @@ export default class Routes {
 		app.route('/v1/test')
 			.get(this.defaultController.test);
 
+		app.route('/v1/contracts')
+			.post(this.defaultController.addContracts);
+
 	}
 }
