@@ -654,7 +654,7 @@ VALUES
 			data.forEach((line) => {
 				tableOptions.columns.push({
 					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
+					type: this._getPgType(line.internalType || line.type),
 					isNullable: true,
 				});
 			});

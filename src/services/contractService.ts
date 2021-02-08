@@ -11,6 +11,7 @@ import EventRepository from '../repositories/contract/eventRepository';
 import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
 import AddressRepository from '../repositories/data/addressRepository';
+import { ABI } from "../types/abi";
 
 const childProcess = require('child_process'); // eslint-disable-line
 const tmp = require('tmp'); // eslint-disable-line
@@ -54,7 +55,8 @@ export default class ContractService {
 	}
 
 	public async addContracts (apiKey: string, addresses: string[]): Promise<{ success; fail }> {
-		console.log('addresses', addresses);
+		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
+		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
 
 		const success = [];
 		const fail = [];
@@ -70,16 +72,23 @@ export default class ContractService {
 
 				// TODO: fix this call
 				// await this.parseSourceCode(tmpObj.name);
+
+				const eventIds: number[] = [];
+				const eventNames: string[] = this.getEventsFromABI(data.abi);
 				
-				const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
+				for (const name of eventNames) {
+					const event = await eventRepository.add({ name });
+					eventIds.push(event.eventId);
+				}
+
 				const contract = await contractRepository.add({
 					address,
 					startingBlock,
 					name: data.name,
 					abi: data.abi,
+					events: eventIds,
+					// TODO: add slots
 				});
-
-				// TODO: add events, slots
 
 				contractIds.push(contract.contractId);
 				success.push(address);
@@ -190,6 +199,15 @@ export default class ContractService {
 				}
 			});
 		})
+	}
+
+	private getEventsFromABI(abi: ABI): string[] {
+		if (!abi) {
+			return [];
+		}
+
+		const events = abi.filter((item) => item.type ===  'event');
+		return (events || []).map((item) => item.name);
 	}
 
 }
