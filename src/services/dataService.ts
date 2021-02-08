@@ -201,7 +201,7 @@ VALUES
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
 		const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
-		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+		const maxPage = Math.ceil((maxBlock - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncEventForContractPage(
@@ -231,7 +231,7 @@ VALUES
 	): Promise<number[]> {
 		const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * limit, limit);
 
-		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
 		const start = startingBlock + (page -1) * limit; // start block for current page
 
 		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
@@ -472,7 +472,7 @@ VALUES
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
 		const maxBlock = await stateProgressRepository.getMaxBlockNumber(contract.contractId, state.stateId);
-		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+		const maxPage = Math.ceil((maxBlock - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncStatesForContractPage(
@@ -502,7 +502,7 @@ VALUES
 	): Promise<number[]> {
 		const progresses = await stateProgressRepository.findSyncedBlocks(contract.contractId, state.stateId, (page - 1) * limit, limit);
 
-		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
 		const start = startingBlock + (page -1) * limit; // start block for current page
 
 		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
@@ -540,7 +540,7 @@ VALUES
 	): Promise<void> {
 		const startingHeaderId = 1;
 		const maxHeaderId = await headerCidsRepository.getMaxHeaderId();
-		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
+		const maxPage = Math.ceil((maxHeaderId - startingHeaderId) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
@@ -566,7 +566,7 @@ VALUES
 	): Promise<number[]> {
 		const syncedHeaders = await headerCidsRepository.findSyncedHeaders((page - 1) * limit, limit);
 
-		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
+		const max = Math.min(maxHeaderId, page * limit + startingHeaderId); // max header id for current page
 		const start = startingHeaderId + (page -1) * limit; // start header id for current page
 
 		const allHeaderIds = Array.from({ length: max - start + 1 }, (_, i) => i + start);

@@ -22,6 +22,11 @@ if (!ids || ids.length === 0) {
 	throw new Error('Contract ids is required');
 }
 
+process.on('unhandledRejection', (reason, p) => {
+	console.log('Unhandled Rejection at:', p, 'reason:', reason);
+	// TODO: send to log system
+});
+
 (async (): Promise<void> => {
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
