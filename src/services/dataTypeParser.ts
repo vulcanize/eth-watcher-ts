@@ -99,13 +99,15 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
 export function structureToSignatureType(name: string, typeName: TypeName, structs: StructDefinition[], level = 0, isArray = false): string {
   switch (typeName.type) {
     case 'ElementaryTypeName':
-      return `${typeName.name}${isArray ? '[]' : ''} ${name}${level ? '' : ';'}`;
+      if (level) {
+        return typeName.name;
+      }
+      return `${typeName.name}${isArray ? '[]' : ''} ${name};`;
     case 'ArrayTypeName':
       return `${structureToSignatureType(name, typeName.baseTypeName, structs, level + 1, true)}`;
     case 'Mapping':
-      return `mapping (${typeName.keyType.name} => ${structureToSignatureType(name, typeName.valueType, structs, level + 1)})`
+      return `mapping (${typeName.keyType.name} => ${structureToSignatureType(name, typeName.valueType, structs, level + 1)}) ${level ? '' : name + ';'}`
     case 'UserDefinedTypeName':
-      // return typeName.namePath; // TODO: fix it
       const members = structs.find(s => s.name == typeName.namePath)?.members; // eslint-disable-line
       if (!members) {
         return null;
