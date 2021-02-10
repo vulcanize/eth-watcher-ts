@@ -1,5 +1,6 @@
 
 import fetch from 'node-fetch';
+import { StateVariableDeclaration, StructDefinition } from 'solidity-parser-diligence';
 import { getConnection } from 'typeorm';
 import Contract from '../models/contract/contract';
 import Event from '../models/contract/event';
@@ -12,10 +13,10 @@ import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
 import AddressRepository from '../repositories/data/addressRepository';
 import { ABI } from "../types/abi";
+import { structureToSignatureType } from './dataTypeParser';
 
 const childProcess = require('child_process'); // eslint-disable-line
-const tmp = require('tmp'); // eslint-disable-line
-const fs = require('fs'); // eslint-disable-line
+const parser = require('@solidity-parser/parser'); // eslint-disable-line
 
 export default class ContractService {
 
@@ -56,6 +57,7 @@ export default class ContractService {
 
 	public async addContracts (apiKey: string, addresses: string[]): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
+		// const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
 
 		const success = [];
@@ -67,11 +69,8 @@ export default class ContractService {
 				const data = await this.getContractDataFromEtherscan(apiKey, address);
 				const startingBlock = await this.getStartingBlockFromEtherscan(apiKey, address);
 
-				const solFile = tmp.fileSync({ prefix: 'contract-', postfix: '.sol' });
-				fs.writeFileSync(solFile.name, data.sourceCode);
-
-				// TODO: fix this call
-				// await this.parseSourceCode(tmpObj.name);
+				const stateObjects = await this.getStatesFromSourceCode(data.sourceCode);
+				// console.log(JSON.stringify(stateObjects, null, 2));
 
 				const eventIds: number[] = [];
 				const eventNames: string[] = this.getEventsFromABI(data.abi);
@@ -178,27 +177,29 @@ export default class ContractService {
 		})
 	}
 
-	private async parseSourceCode(path: string): Promise<any> {
-		// VUL-202 Run backfill service for specific contractIds
-		return new Promise((resolve, reject) => {
-			const workerProcess = childProcess.spawn('slither', [path, '--print', 'variable-order']);
+	private async getStatesFromSourceCode(sourceCode: string): Promise<State[]> {
+		const ast = parser.parse(sourceCode, {
+			tolerant: true,
+		});
+
+		let list = [];
+		const contractDefinitions = ast?.children?.filter((item) => item.type === 'ContractDefinition');
+		for (const contractDefinition of contractDefinitions) {
+			const states = contractDefinition?.subNodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
+			const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
 			
-			workerProcess.stdout.on('data', function (data) {
-				console.log('stdout: ' + data);
-			});
-			
-			workerProcess.stderr.on('data', function (data) {
-				console.log('stderr: ' + data);
-			});
-			
-			workerProcess.on('close', function (code) {
-				if (code === 0) {
-					resolve(code);
-				} else {
-					reject(code);
+			list = list.concat(states?.map((item, slot) => {
+				const type = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs);
+				console.log(type);
+				return {
+					slot,
+					type, 
+					variable: item.variables[0]?.name,
 				}
-			});
-		})
+			}));
+		}
+
+		return list as State[];
 	}
 
 	private getEventsFromABI(abi: ABI): string[] {

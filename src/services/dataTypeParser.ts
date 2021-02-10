@@ -84,7 +84,7 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
         value: parseStructure(`value${level}`, typeName.valueType, structs, level + 1),
       } as MappingStructure;
     case 'UserDefinedTypeName':
-      const members = structs.find(s => s.name == typeName.namePath)?.members;
+      const members = structs.find(s => s.name == typeName.namePath)?.members; // eslint-disable-line
       if (!members) {
         return null;
       }
@@ -93,6 +93,25 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
         type: 'struct',
         fields: members.map(m => parseStructure(m.name, m.typeName, structs, level + 1))
       } as CustomStructure
+  }
+}
+
+export function structureToSignatureType(name: string, typeName: TypeName, structs: StructDefinition[], level = 0, isArray = false): string {
+  switch (typeName.type) {
+    case 'ElementaryTypeName':
+      return `${typeName.name}${isArray ? '[]' : ''} ${name}${level ? '' : ';'}`;
+    case 'ArrayTypeName':
+      return `${structureToSignatureType(name, typeName.baseTypeName, structs, level + 1, true)}`;
+    case 'Mapping':
+      return `mapping (${typeName.keyType.name} => ${structureToSignatureType(name, typeName.valueType, structs, level + 1)})`
+    case 'UserDefinedTypeName':
+      // return typeName.namePath; // TODO: fix it
+      const members = structs.find(s => s.name == typeName.namePath)?.members; // eslint-disable-line
+      if (!members) {
+        return null;
+      }
+
+      return `${typeName.namePath}${isArray ? '[]' : ''} ${name}; struct ${typeName.namePath} {${members.map(m => structureToSignatureType(m.name, m.typeName, structs, level + 1)).join(',')}}`
   }
 }
 

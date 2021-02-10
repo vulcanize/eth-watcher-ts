@@ -43,27 +43,23 @@ process.on('unhandledRejection', (reason, p) => {
 		const contracts: Contract[] = store.getContracts();
 		console.log('Contracts', contracts);
 
-		if (env.ENABLE_EVENT_WATCHER) {
-			const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
-			for (const contract of contracts) {
-				const events: Event[] = store.getEventsByContractId(contract.contractId);
-				for (const event of events) {
-					console.log('Contract', contract.contractId, 'Event', event.name);
+		const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
+		for (const contract of contracts) {
+			const events: Event[] = store.getEventsByContractId(contract.contractId);
+			for (const event of events) {
+				console.log('Contract', contract.contractId, 'Event', event.name);
 
-					await DataService.syncEventForContract({ graphqlService, dataService, progressRepository }, event, contract);
-				}
+				await DataService.syncEventForContract({ graphqlService, dataService, progressRepository }, event, contract);
 			}
 		}
 
-		if (env.ENABLE_STORAGE_WATCHER) {
-			const stateProgressRepository: StateProgressRepository = getConnection().getCustomRepository(StateProgressRepository);
-			for (const contract of contracts) {
-				const states: State[] = store.getStatesByContractId(contract.contractId);
-				for (const state of states) {
-					console.log('Contract', contract.contractId, 'Slot', state.slot);
+		const stateProgressRepository: StateProgressRepository = getConnection().getCustomRepository(StateProgressRepository);
+		for (const contract of contracts) {
+			const states: State[] = store.getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				console.log('Contract', contract.contractId, 'Slot', state.slot);
 
-					await DataService.syncStatesForContract({ graphqlService, dataService, stateProgressRepository }, state, contract);
-				}
+				await DataService.syncStatesForContract({ graphqlService, dataService, stateProgressRepository }, state, contract);
 			}
 		}
 

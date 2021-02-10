@@ -51,14 +51,4 @@ export default class HeaderCidsRepository extends Repository<HeaderCids> {
 		return query.getMany();
 	}
 
-
-	public async getMaxHeaderId(): Promise<number> {
-		const query = this.createQueryBuilder('header_cids')
-			.select("MAX(header_cids.id)", "max");
-
-		const result = await query.getRawOne();
-
-		return result?.max || 0;
-	}
-
 }

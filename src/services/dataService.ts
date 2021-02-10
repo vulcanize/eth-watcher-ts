@@ -200,8 +200,8 @@ VALUES
 		contract: Contract,
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
-		const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
-		const maxPage = Math.ceil((maxBlock - startingBlock) / LIMIT) || 1;
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncEventForContractPage(
@@ -213,7 +213,7 @@ VALUES
 				event,
 				contract,
 				startingBlock,
-				maxBlock,
+				blockNumber,
 				page,
 			)
 		}
@@ -471,8 +471,8 @@ VALUES
 		contract: Contract,
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
-		const maxBlock = await stateProgressRepository.getMaxBlockNumber(contract.contractId, state.stateId);
-		const maxPage = Math.ceil((maxBlock - startingBlock) / LIMIT) || 1;
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncStatesForContractPage(
@@ -484,7 +484,7 @@ VALUES
 				state,
 				contract,
 				startingBlock,
-				maxBlock,
+				blockNumber,
 				page,
 			)
 		}
@@ -539,8 +539,8 @@ VALUES
 	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository }
 	): Promise<void> {
 		const startingHeaderId = 1;
-		const maxHeaderId = await headerCidsRepository.getMaxHeaderId();
-		const maxPage = Math.ceil((maxHeaderId - startingHeaderId) / LIMIT) || 1;
+		const { headerId } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((headerId - startingHeaderId) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
@@ -550,7 +550,7 @@ VALUES
 					dataService
 				},
 				startingHeaderId,
-				maxHeaderId,
+				headerId,
 				page,
 			)
 		}
