@@ -16,10 +16,16 @@
             <div class="col-sm-12 col-md-8 col-lg-6" style="height: calc(100vh - 10.25rem); display: flex; align-items: center; flex: 0 1 auto;">
                 <form id="form">
                     <fieldset>
-                        <legend>List of contracts</legend>
+                        <legend>Etherscan Api Key *</legend>
                         <div class="input-group fluid">
-                            <textarea type="text" value="" id="list" placeholder="0xabc" autocomplete="off" tabindex="1" style="min-width: 300px; min-height: 200px;"></textarea>
-                            <input id="submit"  class="secondary" type="submit" value="Submit" tabindex="2" />
+                            <input value="" id="apikey" placeholder="key" autocomplete="off" tabindex="1" />
+                        </div>
+                        <legend>Addresses *</legend>
+                        <div class="input-group fluid">
+                            <textarea type="text" value="" id="list" placeholder="0xabc&#10;0x123" autocomplete="off" tabindex="2" style="min-width: 300px; min-height: 200px;"></textarea>
+                        </div>
+                        <div class="input-group fluid">
+                            <input id="submit" class="secondary" type="submit" value="Submit" tabindex="3" />
                         </div>
                         <p class="hidden" id='msg-valid'>Success: <mark class="tertiary">0x123</mark></mark></p>
                         <p class="hidden" id='msg-invalid'>Fail: <mark class="secondary">0xabc</mark></p>
@@ -38,13 +44,7 @@
 </body>
     <script>
         (function() {
-            const DELAY = 2000;
             const API_HOST = 'http://localhost:3000/v1';
-            const apikey = ''; // TODO: set etherscan api key
-
-            if (!apikey || apikey === '') {
-                alert('Insert Etherscan API key');
-            }
 
             const form = document.getElementById('form');
             form.addEventListener('submit', handleSubmit, false);
@@ -67,7 +67,11 @@
                 button.value = 'wait...';
                 button.className += ' ';
 
-                await process();
+                try {
+                    await process();
+                } catch (e) {
+                    // do nothing
+                }
 
                 button.value = buttonLabel;
                 button.removeAttribute('disabled');                
@@ -85,15 +89,51 @@
 
                 hideAllMsgs();
 
-                const res = await callApi('POST', `${API_HOST}/contracts`, { apikey, addresses });
-                console.log(res)
+                const apikey = document.getElementById('apikey').value;
+                if (!apikey) {
+                    alert('Api key is required');
+
+                    return null;
+                }
+
+                const contracts = [];
+                const errors = [];
+                for (const address of addresses) {
+                    var { result } = await callApi('GET', `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${apikey}`);
+                    const contract = result ? result[0] : null;
+
+                    if (!contract || !contract.ContractName) {
+                        errors.push(address);
+                        continue;
+                    }
+
+                    var { result } = await callApi('GET', `https://api.etherscan.io/api?module=account&action=txlist&page=1&offset=3&sort=asc&address=${address}&apikey=${apikey}`);
+                    const startingBlock = result ? result[0].blockNumber : 0;
+
+                    contracts.push({
+                        address,
+                        startingBlock,
+                        name: contract.ContractName,
+                        abi: contract.ABI ? JSON.parse(contract.ABI) : null,
+                        sourceCode: contract.SourceCode,
+                    });
+                }
+
+                let res;
+                try {
+                    res = await callApi('POST', `${API_HOST}/contracts`, { contracts });
+                } catch (e) {
+                    console.error(e);
+                    // do nothing
+                }
+
                 let msg = null;
-                if (res.data.fail && res.data.fail.length) {
+                if ((res && res.data.fail && res.data.fail.length) || (errors && errors.length)) {
                     msg = document.getElementById('msg-invalid');
-                    msg.innerHTML = `<mark class="secondary">${res.data.fail.join('\n')}</mark>`;
+                    msg.innerHTML = `<mark class="secondary">${(errors || []).concat(res.data.fail || []).join('\n')}</mark>`;
                     msg.className = '';
                 } 
-                if (res.data.success && res.data.success.length) {
+                if (res && res.data.success && res.data.success.length) {
                     msg = document.getElementById('msg-valid');
                     msg.innerHTML = `<mark class="tertiary">${res.data.success.join('\n')}</mark>`;
                     msg.className = '';

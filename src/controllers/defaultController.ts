@@ -20,10 +20,10 @@ export default class DefaultController {
 
 	public async addContracts (req: Request, res: Response, next: NextFunction): Promise<void> {
 		try {
-			const addresses = req.body.addresses;
+			const contracts = req.body.contracts;
 			const apikey = req.body.apikey;
 
-			const data = await contractService.addContracts(apikey, addresses);
+			const data = await contractService.addContracts(apikey, contracts);
 
 			res.status(HttpStatusCodes.OK).json({
 				message: 'OK',

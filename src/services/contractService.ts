@@ -1,5 +1,4 @@
 
-import fetch from 'node-fetch';
 import { StateVariableDeclaration, StructDefinition } from 'solidity-parser-diligence';
 import { getConnection } from 'typeorm';
 import Contract from '../models/contract/contract';
@@ -55,7 +54,7 @@ export default class ContractService {
 		return addressRepository.findAll();
 	}
 
-	public async addContracts (apiKey: string, addresses: string[]): Promise<{ success; fail }> {
+	public async addContracts (apiKey: string, contracts: any[]): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
 		// const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
@@ -64,16 +63,14 @@ export default class ContractService {
 		const fail = [];
 		const contractIds = [];
 
-		for (const address of addresses) {
+		for (const contractObj of contracts) {
 			try {
-				const data = await this.getContractDataFromEtherscan(apiKey, address);
-				const startingBlock = await this.getStartingBlockFromEtherscan(apiKey, address);
-
-				const stateObjects = await this.getStatesFromSourceCode(data.sourceCode);
+				
+				const stateObjects = await this.getStatesFromSourceCode(contractObj.sourceCode);
 				// console.log(JSON.stringify(stateObjects, null, 2));
 
 				const eventIds: number[] = [];
-				const eventNames: string[] = this.getEventsFromABI(data.abi);
+				const eventNames: string[] = this.getEventsFromABI(contractObj.abi);
 				
 				for (const name of eventNames) {
 					const event = await eventRepository.add({ name });
@@ -81,19 +78,19 @@ export default class ContractService {
 				}
 
 				const contract = await contractRepository.add({
-					address,
-					startingBlock,
-					name: data.name,
-					abi: data.abi,
+					address: contractObj.address,
+					startingBlock: contractObj.startingBlock,
+					name: contractObj.name,
+					abi: contractObj.abi,
 					events: eventIds,
 					// TODO: add slots
 				});
 
 				contractIds.push(contract.contractId);
-				success.push(address);
+				success.push(contractObj.address);
 			} catch (e) {
 				console.log(e);
-				fail.push(address);
+				fail.push(contractObj.address);
 			} 
 		}
 
@@ -105,53 +102,6 @@ export default class ContractService {
 			success,
 			fail
 		}
-	}
-
-	private async getStartingBlockFromEtherscan (apiKey: string, address: string): Promise<number> {
-		const uri = `https://api.etherscan.io/api?module=account&action=txlist&page=1&offset=3&sort=asc&address=${address}&apikey=${apiKey}`;
-		const response = await fetch(uri, { method: 'get' });
-		const data = await response.json();
-
-		if (!data.result || data.result.length === 0) {
-			throw new Error('Oops, something wrong with etherscan API');
-		}
-
-		const firstTx = data.result[0];
-
-		if (!firstTx) {
-			throw new Error('Wrong contract address');
-		}
-		const blockNumber = firstTx.blockNumber;
-
-		if (!blockNumber) {
-			throw new Error('Wrong contract address');
-		}
-
-		return blockNumber;
-	}
-
-	private async getContractDataFromEtherscan (apiKey: string, address: string): Promise<{ name; abi; sourceCode }> {
-		const uri = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${apiKey}`;
-		const response = await fetch(uri, { method: 'get' });
-
-		const data = await response.json();
-
-		console.log(data.result.length)
-		if (!data.result || data.result.length === 0) {
-			throw new Error('Oops');
-		}
-
-		const contract = data.result[0];
-
-		if (!contract) {
-			throw new Error('Wrong contract address');
-		}
-
-		return {
-			name: contract.ContractName,
-			abi: contract.ABI ? JSON.parse(contract.ABI) : null,
-			sourceCode: contract.SourceCode,
-		};
 	}
 
 	private async runBackfillService(contractIds: number[]): Promise<any> {
