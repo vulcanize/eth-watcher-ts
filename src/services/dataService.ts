@@ -25,6 +25,7 @@ import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
 import { ABI, ABIInput } from "../types/abi";
+import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 
 const LIMIT = 1000;
 
@@ -194,8 +195,8 @@ VALUES
 	}
 
 	public static async syncEventForContract({
-		graphqlService, progressRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
+		graphqlService, progressRepository, dataService, backfillProgressRepository
+	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository; backfillProgressRepository?: BackfillProgressRepository },
 		event: Event,
 		contract: Contract,
 	): Promise<void> {
@@ -204,7 +205,7 @@ VALUES
 		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
-			await DataService._syncEventForContractPage(
+			await to(DataService._syncEventForContractPage(
 				{
 					graphqlService,
 					progressRepository,
@@ -215,7 +216,15 @@ VALUES
 				startingBlock,
 				blockNumber,
 				page,
-			)
+			));
+
+			if (backfillProgressRepository) {
+				const max = Math.min(blockNumber, page * LIMIT + startingBlock); // max block for current page
+				const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+				const currentProgress = await backfillProgressRepository.getProgress(contract.contractId);
+				await backfillProgressRepository.updateProgress(contract.contractId, currentProgress + (max - start));
+			}
 		}
 	}
 
@@ -465,8 +474,8 @@ VALUES
 	}
 
 	public static async syncStatesForContract({
-		graphqlService, stateProgressRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		graphqlService, stateProgressRepository, dataService, backfillProgressRepository
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository; backfillProgressRepository?: BackfillProgressRepository },
 		state: State,
 		contract: Contract,
 	): Promise<void> {
@@ -475,7 +484,7 @@ VALUES
 		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
-			await DataService._syncStatesForContractPage(
+			await to(DataService._syncStatesForContractPage(
 				{
 					graphqlService,
 					stateProgressRepository,
@@ -486,7 +495,15 @@ VALUES
 				startingBlock,
 				blockNumber,
 				page,
-			)
+			));
+
+			if (backfillProgressRepository) {
+				const max = Math.min(blockNumber, page * LIMIT + startingBlock); // max block for current page
+				const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+				const currentProgress = await backfillProgressRepository.getProgress(contract.contractId);
+				await backfillProgressRepository.updateProgress(contract.contractId, currentProgress + (max - start));
+			}
 		}
 	}
 
