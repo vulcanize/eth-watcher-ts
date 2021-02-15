@@ -103,7 +103,7 @@
                     const contract = result ? result[0] : null;
 
                     if (!contract || !contract.ContractName) {
-                        errors.push(address);
+                        errors.push(`${address} : not exists`);
                         continue;
                     }
 
@@ -116,6 +116,7 @@
                         name: contract.ContractName,
                         abi: contract.ABI ? JSON.parse(contract.ABI) : null,
                         sourceCode: contract.SourceCode,
+                        compilerVersion: contract.CompilerVersion,
                     });
                 }
 

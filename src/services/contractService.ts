@@ -65,6 +65,11 @@ export default class ContractService {
 
 		for (const contractObj of contracts) {
 			try {
+
+				if (contractObj?.compilerVersion.includes('vyper')) {
+					fail.push(`${contractObj.address} : vyper`);
+					continue;
+				}
 				
 				const stateObjects = await this.getStatesFromSourceCode(contractObj.sourceCode);
 				// console.log(JSON.stringify(stateObjects, null, 2));
@@ -95,7 +100,7 @@ export default class ContractService {
 		}
 
 		if (contractIds && contractIds.length) {
-			this.runBackfillService(contractIds);
+			this.runBackfillService(contractIds); // async
 		}
 
 		return {
