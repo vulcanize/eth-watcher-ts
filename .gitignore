@@ -4,3 +4,4 @@ dist
 ormconfig.json
 config.toml
 public/bundle.*
+.idea
