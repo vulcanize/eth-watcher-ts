@@ -4,7 +4,7 @@ import * as HttpStatusCodes from 'http-status-codes';
 
 export default class DefaultController {
 
-	public async test ({ res, next }: { req: Request; res: Response; next: NextFunction }): Promise<void> {
+	public async health ({ res, next }: { req: Request; res: Response; next: NextFunction }): Promise<void> {
 		try {
 			res.status(HttpStatusCodes.OK).json({
 				message: 'OK',

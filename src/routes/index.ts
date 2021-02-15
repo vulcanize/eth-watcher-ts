@@ -6,8 +6,8 @@ export default class Routes {
 
 	public routes(app): void {
 
-		app.route('/v1/test')
-			.get(this.defaultController.test);
+		app.route('/v1/healthz')
+			.get(this.defaultController.health);
 
 	}
 }
