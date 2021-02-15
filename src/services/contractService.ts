@@ -13,6 +13,7 @@ import StateRepository from '../repositories/contract/stateRepository';
 import AddressRepository from '../repositories/data/addressRepository';
 import { ABI } from "../types/abi";
 import { structureToSignatureType } from './dataTypeParser';
+import ApplicationError from "../errors/applicationError";
 
 const childProcess = require('child_process'); // eslint-disable-line
 const parser = require('@solidity-parser/parser'); // eslint-disable-line
@@ -56,31 +57,45 @@ export default class ContractService {
 
 	public async addContracts (apiKey: string, contracts: any[]): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
-		// const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
+		const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
 
 		const success = [];
 		const fail = [];
 		const contractIds = [];
 
+		if (contracts.length > 5) {
+			throw new ApplicationError('Max 5 addresses per request');
+		}
+
 		for (const contractObj of contracts) {
 			try {
-
 				if (contractObj?.compilerVersion.includes('vyper')) {
 					fail.push(`${contractObj.address} : vyper`);
 					continue;
 				}
-				
-				const stateObjects = await this.getStatesFromSourceCode(contractObj.sourceCode);
-				// console.log(JSON.stringify(stateObjects, null, 2));
 
+				// prepare events
 				const eventIds: number[] = [];
 				const eventNames: string[] = this.getEventsFromABI(contractObj.abi);
-				
 				for (const name of eventNames) {
 					const event = await eventRepository.add({ name });
 					eventIds.push(event.eventId);
 				}
+
+				// prepare states
+				const stateIds: number[] = [];
+				const stateObjects = await this.getStatesFromSourceCode(contractObj.sourceCode);
+				for (const stateObject of stateObjects) {
+					const state = await stateRepository.add({
+						slot: stateObject.slot,
+						type: stateObject.type,
+						variable: stateObject.variable,
+					});
+					stateIds.push(state.stateId);
+				}
+
+				// TODO: check contract by address
 
 				const contract = await contractRepository.add({
 					address: contractObj.address,
@@ -88,7 +103,7 @@ export default class ContractService {
 					name: contractObj.name,
 					abi: contractObj.abi,
 					events: eventIds,
-					// TODO: add slots
+					states: stateIds,
 				});
 
 				contractIds.push(contract.contractId);
@@ -144,8 +159,7 @@ export default class ContractService {
 			const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
 			
 			list = list.concat(states?.map((item, slot) => {
-				const type = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs);
-				console.log(type);
+				const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
 				return {
 					slot,
 					type, 

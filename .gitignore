@@ -5,3 +5,4 @@ ormconfig.json
 config.toml
 public/bundle.*
 .idea
+.DS_Store

@@ -4,7 +4,7 @@ import Contract from '../../models/contract/contract';
 @EntityRepository(Contract)
 export default class ContractRepository extends Repository<Contract> {
 
-	public async add({ name, address, abi, startingBlock, events }): Promise<Contract> {
+	public async add({ name, address, abi, startingBlock, events, states }): Promise<Contract> {
 		const contract = await this.findOne({
 			where: {
 				address
@@ -21,6 +21,7 @@ export default class ContractRepository extends Repository<Contract> {
 			abi,
 			startingBlock,
 			events,
+			states,
 		});
 	}
 
