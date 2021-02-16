@@ -78,6 +78,15 @@ export default class Store {
 		return this.methods;
 	}
 
+	public getMethodsByContractId(contractId: number): Method[] {
+		const contract = (this.contracts || []).find((contract) => contract.contractId === contractId);
+		if (!contract || !contract.methods) {
+			return [];
+		}
+
+		return (this.methods || []).filter((method) => contract.methods.includes(method.methodId));
+	}
+
 	public getStates(): State[] {
 		return this.states;
 	}

@@ -15,6 +15,8 @@ import DataService from './services/dataService';
 import GraphqlService from './services/graphqlService';
 import env from './env';
 import GraphqlClient from './graphqlClient';
+import MethodProgressRepository from "./repositories/data/methodProgressRepository";
+import Method from "./models/contract/method";
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);
@@ -40,7 +42,7 @@ console.log('Cron daemon is started');
 
 				statusEventSync = 'running';
 
-				// start Store without autoupdate data
+				// start Store without auto update data
 				const store = Store.getStore();
 				await store.syncData();
 
@@ -89,7 +91,7 @@ console.log('Cron daemon is started');
 
 				statusEventSync = 'running';
 
-				// start Store without autoupdate data
+				// start Store without auto update data
 				const store = Store.getStore();
 				await store.syncData();
 
@@ -104,6 +106,36 @@ console.log('Cron daemon is started');
 						console.log('Contract', contract.contractId, 'Slot', state.slot);
 
 						await DataService.syncStatesForContract({ graphqlService, dataService, stateProgressRepository }, state, contract);
+					}
+				}
+
+				statusEventSync = 'waiting';
+			});
+		}
+
+		if (env.ENABLE_METHODS_WATCHER) {
+			let statusEventSync = 'waiting';
+			cron.schedule('0 * * * * *', async () => { // every minute
+				if (statusEventSync !== 'waiting') {
+					console.log('Cron already running');
+					return;
+				}
+
+				statusEventSync = 'running';
+
+				// start Store without auto update data
+				const store = Store.getStore();
+				await store.syncData();
+
+				const contracts: Contract[] = store.getContracts();
+
+				console.log('Contracts', contracts.length);
+
+				const methodProgressRepository: MethodProgressRepository = getConnection().getCustomRepository(MethodProgressRepository);
+				for (const contract of contracts) {
+					const methods: Method[] = store.getMethodsByContractId(contract.contractId);
+					for (const method of methods) {
+						await DataService.syncMethodsForContract({ graphqlService, dataService, methodProgressRepository }, method, contract);
 					}
 				}
 

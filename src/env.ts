@@ -79,7 +79,10 @@ export default envalid.cleanEnv(
 		}),
 		ENABLE_STORAGE_WATCHER: envalid.bool({
 			default: tomlConfig?.watcher?.storage
-		}),		
+		}),
+		ENABLE_METHODS_WATCHER: envalid.bool({
+			default: tomlConfig?.watcher?.method
+		}),
 
 	},
 	{ strict: true }

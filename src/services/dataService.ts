@@ -26,6 +26,8 @@ import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
 import { ABI, ABIInput } from "../types/abi";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
+import Method from "../models/contract/method";
+import MethodProgressRepository from "../repositories/data/methodProgressRepository";
 
 const LIMIT = 1000;
 
@@ -596,6 +598,68 @@ VALUES
 		}
 
 		return notSyncedIds;
+	}
+
+	public static async syncMethodsForContract({
+		graphqlService, methodProgressRepository, dataService, backfillProgressRepository
+	}: { graphqlService: GraphqlService; dataService: DataService; methodProgressRepository: MethodProgressRepository; backfillProgressRepository?: BackfillProgressRepository },
+		method: Method,
+		contract: Contract,
+	): Promise<void> {
+		const startingBlock = contract.startingBlock;
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
+
+		for (let page = 1; page <= maxPage; page++) {
+			await to(DataService._syncMethodsForContractPage(
+				{
+					graphqlService,
+					methodProgressRepository,
+					dataService
+				},
+				method,
+				contract,
+				startingBlock,
+				blockNumber,
+				page,
+			));
+
+			if (backfillProgressRepository) {
+				const max = Math.min(blockNumber, page * LIMIT + startingBlock); // max block for current page
+				const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+				const currentProgress = await backfillProgressRepository.getProgress(contract.contractId);
+				await backfillProgressRepository.updateProgress(contract.contractId, currentProgress + (max - start));
+			}
+		}
+	}
+
+	private static async _syncMethodsForContractPage({
+			graphqlService, methodProgressRepository, dataService
+		}: { graphqlService: GraphqlService; dataService: DataService; methodProgressRepository: MethodProgressRepository },
+		method: Method,
+		contract: Contract,
+		startingBlock: number,
+		maxBlock: number,
+		page: number,
+		limit: number = LIMIT,
+	): Promise<number[]> {
+		const progresses = await methodProgressRepository.findSyncedBlocks(contract.contractId, method.methodId, (page - 1) * limit, limit);
+
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
+		const start = startingBlock + (page -1) * limit; // start block for current page
+
+		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedBlocks = progresses.map((p) => p.blockNumber);
+		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
+
+		console.log('notSyncedBlocks', notSyncedBlocks);
+
+		for (const blockNumber of notSyncedBlocks) {
+			// TODO: do sync logic
+		}
+
+		return notSyncedBlocks;
 	}
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
