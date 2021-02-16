@@ -7,7 +7,7 @@ const contractService = new ContractService();
 
 export default class DefaultController {
 
-	public async test (req: Request, res: Response, next: NextFunction): Promise<void> {
+	public async health ({ res, next }: { req: Request; res: Response; next: NextFunction }): Promise<void> {
 		try {
 			res.status(HttpStatusCodes.OK).json({
 				message: 'OK',

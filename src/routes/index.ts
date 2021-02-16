@@ -12,8 +12,8 @@ export default class Routes {
 				res.render('add.ejs', { api: env.HTTP_PUBLIC_ADDR });
 			});
 
-		app.route('/v1/test')
-			.get(this.defaultController.test);
+		app.route('/v1/healthz')
+			.get(this.defaultController.health);
 
 		app.route('/v1/contracts')
 			.post(this.defaultController.addContracts);
