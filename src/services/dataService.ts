@@ -358,7 +358,7 @@ VALUES
 							]);
 						}
 					} else if (structure.value.type === 'struct') {
-						// asd mmaping -> struct
+						// asd mapping -> struct
 						console.log('structure.value', structure.value.fields);
 
 						let storageLeafKey;
@@ -651,12 +651,36 @@ VALUES
 
 		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
 		const syncedBlocks = progresses.map((p) => p.blockNumber);
-		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
-
-		console.log('notSyncedBlocks', notSyncedBlocks);
+		const notSyncedBlocks = [3]//allBlocks.filter(x => !syncedBlocks.includes(x));
 
 		for (const blockNumber of notSyncedBlocks) {
-			// TODO: do sync logic
+			console.log('blockNumber', blockNumber);
+			const header = await graphqlService.ethHeaderCidByBlockNumberWithTxHash(blockNumber);
+			if (!header) {
+				console.warn(`No header for ${blockNumber} block`);
+				continue;
+			}
+
+			for (const ethHeader of header?.ethHeaderCidByBlockNumber?.nodes) {
+				for (const tx of ethHeader.ethTransactionCidsByHeaderId.nodes) {
+					if (!tx?.txHash) {
+						continue;
+					}
+
+					const graphTransaction = await graphqlService.graphTransactionByTxHash(tx.txHash);
+					for (const graphCall of graphTransaction?.graphTransactionByTxHash?.graphCallsByTransactionId?.nodes) {
+						const result = await DecodeService.decodeGraphCall(
+							graphCall,
+							() => Store.getStore().getContracts(),
+							() => Store.getStore().getMethods(),
+						);
+
+						// await dataService.processState(result.relatedNode, result.decoded);
+					}
+				}
+			}
+
+			await methodProgressRepository.add(contract.contractId, method.methodId, blockNumber);
 		}
 
 		return notSyncedBlocks;

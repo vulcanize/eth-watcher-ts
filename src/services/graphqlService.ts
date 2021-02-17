@@ -31,6 +31,18 @@ export default class GraphqlService {
 		return this.graphqlRepository.ethHeaderCidById(headerId);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async ethHeaderCidByBlockNumberWithTxHash(blockNumber: number): Promise<any> {
+		return this.graphqlRepository.ethHeaderCidByBlockNumberWithTxHash(blockNumber);
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	public async graphTransactionByTxHash(txHash: string): Promise<any> {
+		return this.graphqlRepository.graphTransactionByTxHash(txHash);
+	}
+
+
+
 	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value: any) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionReceiptCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;

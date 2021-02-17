@@ -5,6 +5,7 @@ import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
 import { toStructure } from './dataTypeParser';
 import { ABI } from "../types/abi";
+import Method from "../models/contract/method";
 
 type ABIInputData = {
 	name: string;
@@ -284,5 +285,71 @@ export default class DecodeService {
 				relatedNode,
 				decoded: array,
 			};
+	}
+
+	public static async decodeGraphCall(relatedNode, contracts: Contract[] | Function, methods: Method[] | Function): Promise<{relatedNode; decoded}>{
+		console.log('relatedNode!', relatedNode);
+		if (!relatedNode) {
+			return;
+		}
+
+		if (typeof contracts === 'function') {
+			contracts = contracts();
+		}
+
+		if (typeof methods === 'function') {
+			methods = methods();
+		}
+
+		// {
+		// 	__typename: 'GraphCall',
+		// 	dst: '0xa2240F16952e84F791B14DA0182F49a7949ea1c8',
+		// 	gasUsed: '100500',
+		// 	input: '\\x45275c 5c7845453931394435303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303227',
+		// 	output: '\\x30',
+		// 	src: '0x117Db93426Ad44cE9774D239389fcB83057Fc88b',
+		// 	value: '0',
+		// 	opcode: '\\x31',
+		// 	transactionId: 1
+		// }
+
+		let targetContract = (contracts as Contract[]).find((contract) => contract.address === relatedNode.dst || contract.address === relatedNode.src);
+		if (!targetContract) {
+			// TODO: remove this code
+			targetContract = contracts[0];
+			// return;
+		}
+
+		const targetMethods = (methods as Method[]).filter((method) => targetContract.methods.includes(method.methodId));
+
+		if (!targetContract || !targetMethods || targetMethods.length === 0) {
+			return;
+		}
+
+		for (const m of targetMethods) {
+			const contractAbi = targetContract.abi as ABI;
+			const method = contractAbi.find((a) => a.name === m.name.split('(')[0] );
+
+			console.log('method!', method);
+
+			if (!method) {
+				continue;
+			}
+
+			const payload = `${method.name}(${method.inputs.map(input => input.type).join(',')})`;
+			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+
+			console.log('payload', payload);
+			console.log('hash', hash);
+
+			// TODO: check first 6 charts
+
+			// decode rlp
+		}
+
+		return {
+			relatedNode,
+			decoded: null,
+		};
 	}
 }

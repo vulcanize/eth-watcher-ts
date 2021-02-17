@@ -138,6 +138,47 @@ export default class GraphqlRepository {
 		`);
 	}
 
+	public async ethHeaderCidByBlockNumberWithTxHash(blockNumber: number): Promise<unknown> {
+		return this.graphqlClient.query(`
+			query MyQuery {
+				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
+					nodes {
+						ethTransactionCidsByHeaderId {
+							nodes {
+								txHash
+							}
+						}
+					}
+				}
+			}
+		`);
+	}
+
+	public async graphTransactionByTxHash(txHash: string): Promise<unknown> {
+		return this.graphqlClient.query(`
+			query MyQuery {
+				graphTransactionByTxHash(txHash: "${txHash}") {
+					blockHash
+					blockNumber
+					index
+					txHash
+					graphCallsByTransactionId {
+						nodes {
+							dst
+							gasUsed
+							input
+							output
+							src
+							value
+							opcode
+							transactionId
+						}
+					}
+				}
+			}
+		`);
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public subscriptionReceiptCids(onNext: (value: any) => void, onError: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
