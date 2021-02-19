@@ -43,6 +43,10 @@ export default class DecodeService {
 		}
 
 		const targetContract = (contracts as Contract[]).find((contract) => contract.address === relatedNode.logContracts[0]);
+		if (!targetContract) {
+			return;
+		}
+
 		const targetEvents = (events as Event[]).filter((event) => targetContract.events.includes(event.eventId));
 		if (!targetContract || !targetEvents || targetEvents.length === 0) {
 			return;

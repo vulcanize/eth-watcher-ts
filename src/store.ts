@@ -111,9 +111,13 @@ export default class Store {
 		this.addresses.push(address);
 	}
 
-	public async syncData(): Promise<void> {
+	public add(address: Address): void {
+		this.addresses.push(address);
+	}
+
+	public async syncData(contractIds?: number[]): Promise<void> {
 		[Store.store.contracts, Store.store.events, Store.store.methods, Store.store.states, Store.store.addresses] = await Promise.all([
-			Store.store.contractService?.loadContracts(),
+			Store.store.contractService?.loadContracts(contractIds),
 			Store.store.contractService?.loadEvents(),
 			Store.store.contractService?.loadMethods(),
 			Store.store.contractService?.loadStates(),

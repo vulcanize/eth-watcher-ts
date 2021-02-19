@@ -29,6 +29,9 @@ export default envalid.cleanEnv(
 		HTTP_ADDR: envalid.host({
 			default: tomlConfig?.http?.addr || '127.0.0.1',
 		}),
+		HTTP_PUBLIC_ADDR: envalid.url({
+			default: tomlConfig?.http?.public,
+		}),
 
 		GRAPHQL_SERVER_ENABLE: envalid.bool({
 			default: tomlConfig ? tomlConfig['graphql-server']?.enable : true,

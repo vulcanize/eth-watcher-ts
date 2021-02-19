@@ -1,10 +1,39 @@
-import {EntityRepository, Repository} from 'typeorm';
+import {EntityRepository, In, Repository} from 'typeorm';
 import Contract from '../../models/contract/contract';
 
 @EntityRepository(Contract)
 export default class ContractRepository extends Repository<Contract> {
 
+	public async add({ name, address, abi, startingBlock, events, states }): Promise<Contract> {
+		const contract = await this.findOne({
+			where: {
+				address
+			}
+		});
+
+		if (contract) {
+			return contract;
+		}
+
+		return this.save({
+			name,
+			address,
+			abi,
+			startingBlock,
+			events,
+			states,
+		});
+	}
+
 	public findAll(): Promise<Contract[]> {
 		return this.find();
+	}
+
+	public findByIds(ids: number[]): Promise<Contract[]> {
+		return this.find({
+			where: {
+				contractId: In(ids),
+			}
+		});
 	}
 }

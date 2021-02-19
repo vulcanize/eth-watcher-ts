@@ -42,5 +42,8 @@ export default class App {
 		this.app.use(cors());
 		this.app.use(bodyParser.json());
 		this.app.use(bodyParser.urlencoded({ extended: false }));
+		this.app.use(express.static('public'));
+		this.app.set('views', 'views');
+		this.app.set("view engine", "ejs");
 	}
 }
