@@ -12,6 +12,10 @@ export default class GraphqlService {
 		this.graphqlRepository = GraphqlRepository.getRepository(graphqlClient);
 	}
 
+	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+		return this.graphqlRepository.getLastBlock();
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public async ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<any> {
 		return this.graphqlRepository.ethHeaderCidWithTransactionByBlockNumber(blockNumber);

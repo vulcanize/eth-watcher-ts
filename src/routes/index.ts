@@ -1,3 +1,4 @@
+import env from '../env';
 import DefaultController from "../controllers/defaultController";
 
 export default class Routes {
@@ -6,8 +7,16 @@ export default class Routes {
 
 	public routes(app): void {
 
-		app.route('/v1/test')
-			.get(this.defaultController.test);
+		app.route('/add')
+			.get((req, res) => {
+				res.render('add.ejs', { api: env.HTTP_PUBLIC_ADDR });
+			});
+
+		app.route('/v1/healthz')
+			.get(this.defaultController.health);
+
+		app.route('/v1/contracts')
+			.post(this.defaultController.addContracts);
 
 	}
 }

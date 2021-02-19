@@ -14,11 +14,14 @@
     "//": "downgrade last migration",
     "migrate:down": "npx ts-node ./node_modules/typeorm/cli.js migration:revert",
     "build-browser-lib": "npx webpack",
-    "static-serve": "npx serve public -p 3000"
+    "static-serve": "npx serve public -p 3000",
+    "cli": "npx ts-node ./cli/getAbi.ts",
+    "backfill": "npx ts-node ./src/backfillService.ts"
   },
   "dependencies": {
     "@apollo/client": "^3.2.0",
     "@iarna/toml": "^2.2.5",
+    "@solidity-parser/parser": "^0.11.1",
     "@types/express": "^4.17.1",
     "@types/http-status-codes": "^1.2.0",
     "@types/node": "^10.17.34",
@@ -26,6 +29,7 @@
     "awesome-typescript-loader": "^5.2.1",
     "body-parser": "^1.18.3",
     "cors": "^2.8.5",
+    "ejs": "^3.1.6",
     "envalid": "^5.0.0",
     "ethereumjs-abi": "^0.6.8",
     "ethereumjs-util": "^7.0.5",

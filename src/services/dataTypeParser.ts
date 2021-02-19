@@ -84,7 +84,7 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
         value: parseStructure(`value${level}`, typeName.valueType, structs, level + 1),
       } as MappingStructure;
     case 'UserDefinedTypeName':
-      const members = structs.find(s => s.name == typeName.namePath)?.members;
+      const members = structs.find(s => s.name == typeName.namePath)?.members; // eslint-disable-line
       if (!members) {
         return null;
       }
@@ -93,6 +93,46 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
         type: 'struct',
         fields: members.map(m => parseStructure(m.name, m.typeName, structs, level + 1))
       } as CustomStructure
+  }
+}
+
+export function structureToSignatureType(name: string, typeName: TypeName, structs: StructDefinition[], level = 0, isArray = false): {signature: string; type: string; hasStruct: boolean;} {
+  let structsDef = '';
+  if (level === 0 && structs && structs.length) {
+    for (const struct of structs) {
+      structsDef += ` struct ${struct.name} {` + struct.members.map(m => structureToSignatureType(m.name, m.typeName, structs, level + 1).signature).join('') + '}';
+    }
+  }
+
+  switch (typeName.type) {
+    case 'ElementaryTypeName':
+      return {
+        signature: `${typeName.name}${isArray ? '[]' : ''} ${name};`,
+        type: typeName.name,
+        hasStruct: false,
+      }
+    case 'ArrayTypeName': {
+      const res = structureToSignatureType(name, typeName.baseTypeName, structs, level + 1, true);
+      return {
+        signature: res.signature + (level === 0 && res.hasStruct ? structsDef : ''),
+        type: typeName.baseTypeName?.type,
+        hasStruct: res.hasStruct,
+      }
+    }
+    case 'Mapping': {
+      const res = structureToSignatureType(name, typeName.valueType, structs, level + 1);
+      return {
+        signature: `mapping (${typeName.keyType.name} => ${res.type}) ${name};` + (level === 0 && res.hasStruct ? structsDef : ''),
+        type: `mapping (${typeName.keyType.name} => ${res.type})`, // for mapping => mapping case
+        hasStruct: res.hasStruct,
+      }
+    }
+    case 'UserDefinedTypeName':
+      return {
+        signature: `${typeName.namePath}${isArray ? '[]' : ''} ${name};` + (level === 0 ? structsDef : ''),
+        type: typeName.type,
+        hasStruct: true,
+      };
   }
 }
 
@@ -129,7 +169,7 @@ export function toStructure(vars: string, name: string): Structure {
 }
 
 /**
- * Сonverts structure to fields
+ * Converts structure to fields
  * ```typescript
  * const structure: SimpleStructure = {
  *   kind: 'string'
@@ -253,5 +293,5 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
         return [tableOptions];
       }
 
-      throw new Error('Wrong sctructure type');
+      throw new Error('Wrong structure type');
 }

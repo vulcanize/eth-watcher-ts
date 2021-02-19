@@ -18,6 +18,24 @@ export default class GraphqlRepository {
 		this.graphqlClient = graphqlClient;
 	}
 
+	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+		const data = await this.graphqlClient.query(`
+			query MyQuery {
+				allEthHeaderCids(last: 1) {
+					nodes {
+						id
+						blockNumber
+					}
+				}
+			}
+		`);
+
+		return {
+			headerId: Number(data?.allEthHeaderCids.nodes[0]?.id || 0),
+			blockNumber: Number(data?.allEthHeaderCids.nodes[0]?.blockNumber || 0),
+		}
+	}
+
 	public ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<unknown> {
 		return this.graphqlClient.query(`
 			query MyQuery {

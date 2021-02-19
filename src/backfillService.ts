@@ -1,0 +1,78 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+import * as ws from 'ws';
+import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
+import ProgressRepository from './repositories/data/progressRepository';
+import StateProgressRepository from './repositories/data/stateProgressRepository';
+import BackfillProgressRepository from './repositories/data/backfillProgressRepository';
+import Contract from './models/contract/contract';
+import Event from './models/contract/event';
+import State from './models/contract/state';
+import Store from './store';
+import DataService from './services/dataService';
+import GraphqlService from './services/graphqlService';
+import env from './env';
+import GraphqlClient from './graphqlClient';
+
+const ids = process.argv.slice(2);
+
+console.log('Backfill service contract ids', ids);
+
+if (!ids || ids.length === 0) {
+	throw new Error('Contract ids is required');
+}
+
+process.on('unhandledRejection', (reason, p) => {
+	console.log('Unhandled Rejection at:', p, 'reason:', reason);
+	// TODO: send to log system
+});
+
+(async (): Promise<void> => {
+	const connectionOptions = await getConnectionOptions();
+	createConnection(connectionOptions).then(async () => {
+
+		const dataService = new DataService();
+		const graphqlClient = new GraphqlClient(env.GRAPHQL_URI, ws);
+		const graphqlService = new GraphqlService(graphqlClient);
+
+		const progressRepository: ProgressRepository = getConnection().getCustomRepository(ProgressRepository);
+		const stateProgressRepository: StateProgressRepository = getConnection().getCustomRepository(StateProgressRepository);
+		const backfillProgressRepository: BackfillProgressRepository = getConnection().getCustomRepository(BackfillProgressRepository);
+
+		// TODO: Do we need Store here? Remove
+
+		const store = Store.getStore(); // start Store without autoupdate data
+		await store.syncData((ids || []).map((id) => Number(id))); // TODO: use only contracts from args
+
+		const contracts: Contract[] = store.getContracts();
+		for (const contract of contracts) {
+			const { blockNumber } = await graphqlService.getLastBlock();
+			const totalProgress = 2 * (blockNumber - contract.startingBlock);
+			await backfillProgressRepository.startProgress(contract.contractId, totalProgress);
+		}
+
+		for (const contract of contracts) {
+			const { blockNumber } = await graphqlService.getLastBlock();
+			const totalProgress = 2 * (blockNumber - contract.startingBlock);
+
+			const events: Event[] = store.getEventsByContractId(contract.contractId);
+			for (const event of events) {
+				console.log('Contract', contract.contractId, 'Event', event.name);
+
+				await DataService.syncEventForContract({ graphqlService, dataService, progressRepository, backfillProgressRepository }, event, contract);
+			}
+
+			const states: State[] = store.getStatesByContractId(contract.contractId);
+			for (const state of states) {
+				console.log('Contract', contract.contractId, 'Slot', state.slot);
+
+				await DataService.syncStatesForContract({ graphqlService, dataService, stateProgressRepository, backfillProgressRepository }, state, contract);
+			}
+
+			await backfillProgressRepository.updateProgress(contract.contractId, totalProgress); // all done
+		}
+
+		process.exit(0);
+	});
+})();

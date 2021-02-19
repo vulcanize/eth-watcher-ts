@@ -39,14 +39,4 @@ export default class StateProgressRepository extends Repository<StateProgress> {
 		return query.getMany();
 	}
 
-	public async getMaxBlockNumber(contractId: number, stateId: number): Promise<number> {
-		const query = this.createQueryBuilder('state_progress')
-			.where(`contract_id=${contractId}`)
-			.andWhere(`state_id=${stateId}`)
-			.select("MAX(state_progress.block_number)", "max");
-
-		const result = await query.getRawOne();
-
-		return result?.max || 0;
-	}
 }
