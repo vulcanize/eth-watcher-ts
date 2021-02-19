@@ -12,7 +12,7 @@ export default class GraphqlService {
 		this.graphqlRepository = GraphqlRepository.getRepository(graphqlClient);
 	}
 
-	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+	public async getLastBlock(): Promise<{blockNumber}> {
 		return this.graphqlRepository.getLastBlock();
 	}
 
@@ -27,8 +27,8 @@ export default class GraphqlService {
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async ethHeaderCidById(headerId: number): Promise<any> {
-		return this.graphqlRepository.ethHeaderCidById(headerId);
+	public async ethHeaderCidByBlockNumber(blockNumber: number): Promise<any> {
+		return this.graphqlRepository.ethHeaderCidByBlockNumber(blockNumber);
 	}
 
 	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value: any) => void): Promise<void> {

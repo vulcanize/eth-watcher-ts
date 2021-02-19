@@ -18,12 +18,11 @@ export default class GraphqlRepository {
 		this.graphqlClient = graphqlClient;
 	}
 
-	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+	public async getLastBlock(): Promise<{blockNumber}> {
 		const data = await this.graphqlClient.query(`
 			query MyQuery {
 				allEthHeaderCids(last: 1) {
 					nodes {
-						id
 						blockNumber
 					}
 				}
@@ -31,7 +30,6 @@ export default class GraphqlRepository {
 		`);
 
 		return {
-			headerId: Number(data?.allEthHeaderCids.nodes[0]?.id || 0),
 			blockNumber: Number(data?.allEthHeaderCids.nodes[0]?.blockNumber || 0),
 		}
 	}
@@ -112,30 +110,38 @@ export default class GraphqlRepository {
 		`);
 	}
 
-	public ethHeaderCidById(headerId: number): Promise<unknown> {
-		return this.graphqlClient.query(`
+	public async ethHeaderCidByBlockNumber(blockNumber: number): Promise<unknown> {
+		const data = await this.graphqlClient.query(`
 			query MyQuery {
-				ethHeaderCidById(id: ${headerId}) {
-					id
-					td
-					blockHash
-					blockNumber
-					bloom
-					cid
-					mhKey
-					nodeId
-					ethNodeId
-					parentHash
-					receiptRoot
-					reward
-					timesValidated
-					timestamp
-					txRoot
-					uncleRoot
-					stateRoot
+				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
+					nodes {
+						id
+						td
+						blockHash
+						blockNumber
+						bloom
+						cid
+						mhKey
+						nodeId
+						ethNodeId
+						parentHash
+						receiptRoot
+						reward
+						timesValidated
+						timestamp
+						txRoot
+						uncleRoot
+						stateRoot
+					}
 				}
 			}
 		`);
+
+		if (!data || !data.ethHeaderCidByBlockNumber.nodes || data.ethHeaderCidByBlockNumber.nodes.length === 0) {
+			return null;
+		}
+
+		return data.ethHeaderCidByBlockNumber.nodes[0];
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
