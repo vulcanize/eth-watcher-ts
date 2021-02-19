@@ -79,7 +79,6 @@ export default class DataService {
 
 		return getConnection().transaction(async (entityManager) => {
 			const eventRepository: EventRepository = new EventRepository(entityManager.queryRunner);
-			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 
 			await eventRepository.add(tableName, [{
 				name: 'event_id',
@@ -95,7 +94,6 @@ export default class DataService {
 				isStrict: true,
 			},
 			data]);
-			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
@@ -120,9 +118,6 @@ VALUES
 				// TODO: throw err
 				console.log(err);	
 			}
-
-			const stateProgressRepository: StateProgressRepository = entityManager.getCustomRepository(StateProgressRepository);
-			await stateProgressRepository.add(contractId, state.stateId, blockNumber);
 		});
 	}
 
@@ -256,6 +251,8 @@ VALUES
 					await dataService.processEvent(result?.relatedNode, result?.decoded);
 				}
 			}
+
+			await progressRepository.add(contract.contractId, event.eventId, blockNumber);
 		}
 
 		return notSyncedBlocks;
@@ -529,6 +526,8 @@ VALUES
 					await dataService.processState(result.relatedNode, result.decoded);
 				}
 			}
+
+			await stateProgressRepository.add(contract.contractId, state.stateId, blockNumber);
 		}
 
 		return notSyncedBlocks;
