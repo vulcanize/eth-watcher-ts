@@ -555,9 +555,9 @@ VALUES
 		graphqlService, headerCidsRepository, dataService
 	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository }
 	): Promise<void> {
-		const startingHeaderId = 1;
-		const { headerId } = await graphqlService.getLastBlock();
-		const maxPage = Math.ceil((headerId - startingHeaderId) / LIMIT) || 1;
+		const startingBlock = 1; // TODO: set up correct value
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
@@ -566,8 +566,8 @@ VALUES
 					headerCidsRepository,
 					dataService
 				},
-				startingHeaderId,
-				headerId,
+				startingBlock,
+				blockNumber,
 				page,
 			)
 		}
@@ -576,26 +576,26 @@ VALUES
 	protected static async _syncHeadersByPage({
 		graphqlService, headerCidsRepository, dataService
 	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository },
-		startingHeaderId: number,
-		maxHeaderId: number,
+		startingBlock: number,
+		maxBlock: number,
 		page: number,
 		limit: number = LIMIT,
 	): Promise<number[]> {
 		const syncedHeaders = await headerCidsRepository.findSyncedHeaders((page - 1) * limit, limit);
 
-		const max = Math.min(maxHeaderId, page * limit + startingHeaderId); // max header id for current page
-		const start = startingHeaderId + (page -1) * limit; // start header id for current page
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
+		const start = startingBlock + (page -1) * limit; // start block for current page
 
-		const allHeaderBlockNumbers = Array.from({ length: max - start + 1 }, (_, i) => i + start);
-		const syncedBlockNumbers= syncedHeaders.map((p) => Number(p.blockNumber));
-		const notSyncedBlockNumbers = allHeaderBlockNumbers.filter(x => !syncedBlockNumbers.includes(x));
+		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
+		const syncedBlocks = syncedHeaders.map((p) => p.blockNumber);
+		const notSyncedBlocks = allBlocks.filter(x => !syncedBlocks.includes(x));
 
-		for (const blockNumber of notSyncedBlockNumbers) {
+		for (const blockNumber of notSyncedBlocks) {
 			const header = await graphqlService.ethHeaderCidByBlockNumber(blockNumber);
 			await dataService.processHeader(header);
 		}
 
-		return notSyncedBlockNumbers;
+		return notSyncedBlocks;
 	}
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {

@@ -21,7 +21,7 @@ export default class HeaderCids {
 	id: number;
 
 	@Column("bigint", { name: "block_number", unique: true })
-	blockNumber: string;
+	blockNumber: number;
 
 	@Column("character varying", { name: "block_hash", unique: true, length: 66 })
 	blockHash: string;

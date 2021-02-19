@@ -12,7 +12,7 @@ export default class GraphqlService {
 		this.graphqlRepository = GraphqlRepository.getRepository(graphqlClient);
 	}
 
-	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+	public async getLastBlock(): Promise<{blockNumber}> {
 		return this.graphqlRepository.getLastBlock();
 	}
 

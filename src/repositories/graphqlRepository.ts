@@ -18,12 +18,11 @@ export default class GraphqlRepository {
 		this.graphqlClient = graphqlClient;
 	}
 
-	public async getLastBlock(): Promise<{headerId; blockNumber}> {
+	public async getLastBlock(): Promise<{blockNumber}> {
 		const data = await this.graphqlClient.query(`
 			query MyQuery {
 				allEthHeaderCids(last: 1) {
 					nodes {
-						id
 						blockNumber
 					}
 				}
@@ -31,7 +30,6 @@ export default class GraphqlRepository {
 		`);
 
 		return {
-			headerId: Number(data?.allEthHeaderCids.nodes[0]?.id || 0),
 			blockNumber: Number(data?.allEthHeaderCids.nodes[0]?.blockNumber || 0),
 		}
 	}
