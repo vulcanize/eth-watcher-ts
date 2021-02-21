@@ -1,7 +1,7 @@
 import {EntityRepository, QueryRunner} from 'typeorm';
 
 @EntityRepository()
-export default class SlotRepository {
+export default class MethodRepository {
 	private queryRunner: QueryRunner;
 
 	constructor(queryRunner: QueryRunner) {

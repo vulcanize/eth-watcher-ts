@@ -9,4 +9,5 @@ export type ABI = Array<{
 	name: string;
 	type: string;
 	inputs: ABIInput[];
+	outputs: ABIInput[];
 }>

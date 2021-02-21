@@ -288,7 +288,6 @@ export default class DecodeService {
 	}
 
 	public static async decodeGraphCall(relatedNode, contracts: Contract[] | Function, methods: Method[] | Function): Promise<{relatedNode; decoded}>{
-		console.log('relatedNode!', relatedNode);
 		if (!relatedNode) {
 			return;
 		}
@@ -301,27 +300,15 @@ export default class DecodeService {
 			methods = methods();
 		}
 
-		// {
-		// 	__typename: 'GraphCall',
-		// 	dst: '0xa2240F16952e84F791B14DA0182F49a7949ea1c8',
-		// 	gasUsed: '100500',
-		// 	input: '\\x45275c 5c7845453931394435303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303227',
-		// 	output: '\\x30',
-		// 	src: '0x117Db93426Ad44cE9774D239389fcB83057Fc88b',
-		// 	value: '0',
-		// 	opcode: '\\x31',
-		// 	transactionId: 1
-		// }
-
-		let targetContract = (contracts as Contract[]).find((contract) => contract.address === relatedNode.dst || contract.address === relatedNode.src);
+		const targetContract = (contracts as Contract[]).find((contract) =>
+			contract.address === relatedNode.dst?.toLowerCase() ||
+			contract.address === relatedNode.src?.toLowerCase()
+		);
 		if (!targetContract) {
-			// TODO: remove this code
-			targetContract = contracts[0];
-			// return;
+			return;
 		}
 
 		const targetMethods = (methods as Method[]).filter((method) => targetContract.methods.includes(method.methodId));
-
 		if (!targetContract || !targetMethods || targetMethods.length === 0) {
 			return;
 		}
@@ -330,21 +317,33 @@ export default class DecodeService {
 			const contractAbi = targetContract.abi as ABI;
 			const method = contractAbi.find((a) => a.name === m.name.split('(')[0] );
 
-			console.log('method!', method);
-
 			if (!method) {
 				continue;
 			}
 
 			const payload = `${method.name}(${method.inputs.map(input => input.type).join(',')})`;
 			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+			const subHash = hash.substr(2,8);
 
-			console.log('payload', payload);
-			console.log('hash', hash);
+			let types = [];
+			if (relatedNode.input?.substr(2, 8) === subHash && relatedNode.input?.length > 10) {
+				types = method.inputs.map(input => input.type);
+			} else if (relatedNode.output?.substr(2, 8) === subHash && relatedNode.output?.length > 10) {
+				types = method.outputs.map(input => input.type);
+			} else {
+				continue;
+			}
 
-			// TODO: check first 6 charts
+			const rlpString = relatedNode.input?.substr(11) || relatedNode.output?.substr(11);
+			const decoded = abi.rawDecode(types, Buffer.from(rlpString, 'hex'))
 
-			// decode rlp
+			return {
+				relatedNode,
+				decoded: [{ // TODO: fix for input with many params
+					name: method.name,
+					value: decoded.toString(),
+				}],
+			}
 		}
 
 		return {
