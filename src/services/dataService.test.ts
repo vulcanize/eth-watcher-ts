@@ -148,7 +148,8 @@ describe('_syncEventForContractPage', function () {
     const mockProgressRepository = {
       findSyncedBlocks: jest.fn().mockResolvedValueOnce(
         [2, 3, 4, 5].map(blockNumber => ({ blockNumber }))
-      )
+      ),
+      add: jest.fn(),
     } as any;
 
     const startBlock = 0;
@@ -168,7 +169,8 @@ describe('_syncEventForContractPage', function () {
 
   test('without synced blocks', async function () {
     const mockProgressRepository = {
-      findSyncedBlocks: jest.fn().mockResolvedValueOnce([])
+      findSyncedBlocks: jest.fn().mockResolvedValueOnce([]),
+      add: jest.fn(),
     } as any;
 
     const startBlock = 0;
