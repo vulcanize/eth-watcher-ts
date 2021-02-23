@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 import fetch from 'node-fetch';
 const child_process = require('child_process');
 
