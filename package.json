@@ -4,7 +4,7 @@
   "description": "Contract watcher on TypeScript",
   "scripts": {
     "test": "jest",
-    "lint": "npx eslint --ext=ts,tsx .",
+    "lint": "npx eslint --max-warnings 0 --ext=ts,tsx .",
     "build": "npx tsc",
     "dev": "npx ts-node ./src/server.ts",
     "start": "NODE_ENV=production npx node ./dist/server.js",
