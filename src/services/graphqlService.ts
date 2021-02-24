@@ -31,7 +31,7 @@ export default class GraphqlService {
 		return this.graphqlRepository.ethHeaderCidById(headerId);
 	}
 
-	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value: any) => void): Promise<void> {
+	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionReceiptCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeReceiptCid(relatedNode, contracts, events);
@@ -39,11 +39,11 @@ export default class GraphqlService {
 		}, (error) => {console.log(error)});
 	}
 
-	public async subscriptionHeaderCids(func: (value: any) => void): Promise<void> {
+	public async subscriptionHeaderCids(func: (value) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionHeaderCids(func, (error) => {console.log(error)});
 	}
 
-	public async subscriptionStateCids(contracts: Contract[] | Function, states: State[] | Function, func: (value: any) => void): Promise<void> {
+	public async subscriptionStateCids(contracts: Contract[] | Function, states: State[] | Function, func: (value) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionStateCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeStateCid(relatedNode, contracts, states);

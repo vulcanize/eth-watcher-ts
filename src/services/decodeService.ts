@@ -147,7 +147,7 @@ export default class DecodeService {
 
 			console.log(JSON.stringify(relatedNode, null, 2));
 
-			const array: { name: string; value: any }[] = [];
+			const array: { name: string; value: string | number }[] = [];
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {
