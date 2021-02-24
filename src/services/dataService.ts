@@ -66,8 +66,7 @@ export default class DataService {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string): Promise<void> {
 		if (!data) {
 			return;
 		}
@@ -98,8 +97,7 @@ export default class DataService {
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+	public async addState (contractId: number, mhKey: string, state: State, value: string | number): Promise<void> {
 		const tableName = DataService._getTableName({
 			contractId,
 			type: 'state',
@@ -123,7 +121,7 @@ VALUES
 	}
 
 	public static _getPgType(abiType: string): string {
-		let pgType = 'text';
+		let pgType: string;
 
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
@@ -182,7 +180,6 @@ VALUES
 				target.contractId,
 				d,
 				relatedNode.mhKey,
-				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
 			);
 
 			console.log('Event saved');
@@ -294,7 +291,8 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode, todo): Promise<StateCids> {
+	// TODO: add decoded values
+	public async processState(relatedNode): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
@@ -464,7 +462,7 @@ VALUES
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
 
-					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value);
 				}
 			}
 		}
@@ -540,7 +538,7 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getStates(),
 					);
-					await dataService.processState(result.relatedNode, result.decoded);
+					await dataService.processState(result.relatedNode);
 				}
 			}
 

@@ -18,6 +18,15 @@ import ApplicationError from "../errors/applicationError";
 const childProcess = require('child_process'); // eslint-disable-line
 const parser = require('@solidity-parser/parser'); // eslint-disable-line
 
+type ContractParam = {
+	address: string;
+	startingBlock: number;
+	name: string;
+	abi?: ABI;
+	sourceCode: string;
+	compilerVersion: string;
+}
+
 export default class ContractService {
 
 	public async loadContracts (contractIds?: number[]): Promise<Contract[]> {
@@ -55,7 +64,8 @@ export default class ContractService {
 		return addressRepository.findAll();
 	}
 
-	public async addContracts (apiKey: string, contracts: any[]): Promise<{ success; fail }> {
+
+	public async addContracts (apiKey: string, contracts: ContractParam[]): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
 		const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
@@ -124,7 +134,7 @@ export default class ContractService {
 		}
 	}
 
-	private async runBackfillService(contractIds: number[]): Promise<any> {
+	private async runBackfillService(contractIds: number[]): Promise<number> {
 		// VUL-202 Run backfill service for specific contractIds
 		return new Promise((resolve, reject) => {
 			const workerProcess = childProcess.spawn('npx', ['ts-node', './src/backfillService.ts', ...contractIds]);

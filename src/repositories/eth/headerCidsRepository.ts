@@ -11,7 +11,7 @@ export default class HeaderCidsRepository extends Repository<HeaderCids> {
 		bloom,
 		cid,
 		mhKey,
-		nodeId,
+		nodeId, // eslint-disable-line
 		parentHash,
 		receiptRoot,
 		uncleRoot,
