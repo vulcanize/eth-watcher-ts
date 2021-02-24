@@ -3,7 +3,7 @@ import GraphqlClient from "./graphqlClient";
 import Contract from "./models/contract/contract";
 import State from "./models/contract/state";
 import Event from "./models/contract/event";
-import { ABI } from "./types/abi";
+import { ABI } from "./types";
 
 type ContractConfig = {
 	address: string;
@@ -76,7 +76,7 @@ class ContractWatcher  {
         }
         return this.graphqlService.subscriptionStateCids(contracts, states, func);
     }
-    
+
 }
 
 

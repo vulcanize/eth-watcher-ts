@@ -25,8 +25,10 @@ export default class ContractRepository extends Repository<Contract> {
 		});
 	}
 
-	public findAll(): Promise<Contract[]> {
-		return this.find();
+	public async findAll(): Promise<Contract[]> {
+		return this.createQueryBuilder()
+			.leftJoinAndSelect("Contract.allAbis", "contract_to_abi")
+			.getMany();
 	}
 
 	public findByIds(ids: number[]): Promise<Contract[]> {

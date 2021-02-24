@@ -24,7 +24,7 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
-import { ABI, ABIInput } from "../types/abi";
+import { ABI, ABIInput } from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 
 const LIMIT = 1000;
@@ -115,7 +115,7 @@ VALUES
 			const [err] = await to(entityManager.queryRunner.query(sql));
 			if (err) {
 				// TODO: throw err
-				console.log(err);	
+				console.log(err);
 			}
 		});
 	}
@@ -319,7 +319,7 @@ VALUES
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					if (structure.value.type === 'simple') {
@@ -617,7 +617,7 @@ VALUES
 						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
 						if (!isExist) {
 							const hash = DataService._getKeyForMapping(adr.address, state.slot);
-							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);
 						}
 					}
 				}
