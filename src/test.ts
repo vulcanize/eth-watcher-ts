@@ -10,8 +10,8 @@ process.on('unhandledRejection', (reason, p) => {
 
 (async (): Promise<void> => {
 	await EthWatcherServer({ // DI 
-		processState: (a) => console.log('Test',a),
-		processHeader: (a) => console.log('Test',a),
-		processEvent: (a) => console.log('Test',a),
+		processState: (raw, decoded) => console.log('Test state', raw, decoded),
+		processHeader: (raw) => console.log('Test header', raw),
+		processEvent: (raw, decoded) => console.log('Test event', raw, decoded),
 	})
 })();
