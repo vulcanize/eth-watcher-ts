@@ -6,3 +6,4 @@ config.toml
 public/bundle.*
 .idea
 .npmrc
+.DS_Store

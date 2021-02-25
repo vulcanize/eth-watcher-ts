@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mini.css/3.0.1/mini-default.min.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Add Contracts</title>
+</head>
+<body>
+    <header class="sticky">
+        <a href="#" class="logo" tabindex="-1">eth watcher</a>
+        <!-- <a href="#" role="button" tabindex="-1">One</a> -->
+    </header>
+    <div class="container" style="background: #222 center center no-repeat; background-size: cover;">
+        <div class="row">
+            <div class="col-sm"></div>
+            <div class="col-sm-12 col-md-8 col-lg-6" style="height: calc(100vh - 10.25rem); display: flex; align-items: center; flex: 0 1 auto;">
+                <form id="form">
+                    <fieldset>
+                        <legend>Etherscan Api Key *</legend>
+                        <div class="input-group fluid">
+                            <input value="" id="apikey" placeholder="key" autocomplete="off" tabindex="1" />
+                        </div>
+                        <legend>Addresses *</legend>
+                        <div class="input-group fluid">
+                            <textarea type="text" value="" id="list" placeholder="0xabc&#10;0x123" autocomplete="off" tabindex="2" style="min-width: 300px; min-height: 200px;"></textarea>
+                        </div>
+                        <div class="input-group fluid">
+                            <input id="submit" class="secondary" type="submit" value="Submit" tabindex="3" />
+                        </div>
+                        <p class="hidden" id='msg-valid'>Success: <mark class="tertiary">0x123</mark></mark></p>
+                        <p class="hidden" id='msg-invalid'>Fail: <mark class="secondary">0xabc</mark></p>
+                    </fieldset>
+                </form>
+            </div>
+            <div class="col-sm"></div>
+        </div> 
+    </div>
+    <span class="toast hidden" id="toast">Status updated</span>
+    <footer>
+        <p>
+            eth-watcher-ts | <a href="https://github.com/vulcanize/eth-watcher-ts">Github</a>
+        </p>
+    </footer>
+</body>
+    <script>
+        (function() {
+            const API_HOST = '<%=api %>/v1';
+
+            const form = document.getElementById('form');
+            form.addEventListener('submit', handleSubmit, false);
+
+            function showToast(time = 3000) {
+                const toast = document.getElementById('toast');
+                
+                toast.className = 'toast';
+                setTimeout(() => {
+                    toast.className += ' hidden';
+                }, time);
+            }
+
+            async function handleSubmit(event) {
+                event.preventDefault();
+
+                const button = document.getElementById('submit');
+                const buttonLabel = button.value;
+                button.setAttribute('disabled', true);
+                button.value = 'wait...';
+                button.className += ' ';
+
+                try {
+                    await process();
+                } catch (e) {
+                    // do nothing
+                }
+
+                button.value = buttonLabel;
+                button.removeAttribute('disabled');                
+            }
+
+            async function process() {
+                const input = document.getElementById('list');
+
+                const addresses = (input.value || '').split('\n');
+                if (!addresses) {
+                    // do nothing
+
+                    return null;
+                }
+
+                hideAllMsgs();
+
+                const apikey = document.getElementById('apikey').value;
+                if (!apikey) {
+                    alert('Api key is required');
+
+                    return null;
+                }
+
+                const contracts = [];
+                const errors = [];
+                for (const address of addresses) {
+                    var { result } = await callApi('GET', `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${address}&apikey=${apikey}`);
+                    const contract = result ? result[0] : null;
+
+                    if (!contract || !contract.ContractName) {
+                        errors.push(`${address} : not exists`);
+                        continue;
+                    }
+
+                    var { result } = await callApi('GET', `https://api.etherscan.io/api?module=account&action=txlist&page=1&offset=3&sort=asc&address=${address}&apikey=${apikey}`);
+                    const startingBlock = result ? result[0].blockNumber : 0;
+
+                    contracts.push({
+                        address,
+                        startingBlock,
+                        name: contract.ContractName,
+                        abi: contract.ABI ? JSON.parse(contract.ABI) : null,
+                        sourceCode: contract.SourceCode,
+                        compilerVersion: contract.CompilerVersion,
+                    });
+                }
+
+                let res;
+                try {
+                    res = await callApi('POST', `${API_HOST}/contracts`, { contracts });
+                } catch (e) {
+                    console.error(e);
+                    // do nothing
+                }
+
+                let msg = null;
+                if ((res && res.data.fail && res.data.fail.length) || (errors && errors.length)) {
+                    msg = document.getElementById('msg-invalid');
+                    msg.innerHTML = `<mark class="secondary">${(errors || []).concat(res.data.fail || []).join('\n')}</mark>`;
+                    msg.className = '';
+                } 
+                if (res && res.data.success && res.data.success.length) {
+                    msg = document.getElementById('msg-valid');
+                    msg.innerHTML = `<mark class="tertiary">${res.data.success.join('\n')}</mark>`;
+                    msg.className = '';
+                }
+
+                showToast();
+            }
+
+            function hideAllMsgs() {
+                document.getElementById('msg-invalid').className = 'hidden';
+                document.getElementById('msg-valid').className = 'hidden';
+            }
+
+            async function callApi(method, url = '', data = {}) {
+                const request = {
+                    method,
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    redirect: 'follow',
+                    referrerPolicy: 'no-referrer',
+                };
+
+                if (method === 'POST' || method === 'PUT') {
+                    request.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(url, request);
+
+                return response.json();
+            }
+        })();
+    </script>
+</html>

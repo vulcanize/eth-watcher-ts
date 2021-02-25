@@ -43,6 +43,10 @@ export default class DecodeService {
 		}
 
 		const targetContract = (contracts as Contract[]).find((contract) => contract.address === relatedNode.logContracts[0]);
+		if (!targetContract) {
+			return;
+		}
+
 		const targetEvents = (events as Event[]).filter((event) => targetContract.events.includes(event.eventId));
 		if (!targetContract || !targetEvents || targetEvents.length === 0) {
 			return;
@@ -143,7 +147,7 @@ export default class DecodeService {
 
 			console.log(JSON.stringify(relatedNode, null, 2));
 
-			const array: { name: string; value: any }[] = [];
+			const array: { name: string; value: string | number }[] = [];
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {

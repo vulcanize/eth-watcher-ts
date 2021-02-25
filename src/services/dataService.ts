@@ -25,6 +25,7 @@ import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
 import { ABI, ABIInput } from "../types/abi";
+import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 
 const LIMIT = 1000;
 
@@ -65,8 +66,7 @@ export default class DataService {
 		}
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string): Promise<void> {
 		if (!data) {
 			return;
 		}
@@ -79,7 +79,6 @@ export default class DataService {
 
 		return getConnection().transaction(async (entityManager) => {
 			const eventRepository: EventRepository = new EventRepository(entityManager.queryRunner);
-			const progressRepository: ProgressRepository = entityManager.getCustomRepository(ProgressRepository);
 
 			await eventRepository.add(tableName, [{
 				name: 'event_id',
@@ -95,12 +94,10 @@ export default class DataService {
 				isStrict: true,
 			},
 			data]);
-			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+	public async addState (contractId: number, mhKey: string, state: State, value: string | number): Promise<void> {
 		const tableName = DataService._getTableName({
 			contractId,
 			type: 'state',
@@ -120,14 +117,11 @@ VALUES
 				// TODO: throw err
 				console.log(err);	
 			}
-
-			const stateProgressRepository: StateProgressRepository = entityManager.getCustomRepository(StateProgressRepository);
-			await stateProgressRepository.add(contractId, state.stateId, blockNumber);
 		});
 	}
 
 	public static _getPgType(abiType: string): string {
-		let pgType = 'text';
+		let pgType: string;
 
 		// Fill in pg type based on abi type
 		switch (abiType.replace(/\d+/g, '')) {
@@ -186,7 +180,6 @@ VALUES
 				target.contractId,
 				d,
 				relatedNode.mhKey,
-				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
 			);
 
 			console.log('Event saved');
@@ -194,17 +187,17 @@ VALUES
 	}
 
 	public static async syncEventForContract({
-		graphqlService, progressRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository },
+		graphqlService, progressRepository, dataService, backfillProgressRepository
+	}: { graphqlService: GraphqlService; dataService: DataService; progressRepository: ProgressRepository; backfillProgressRepository?: BackfillProgressRepository },
 		event: Event,
 		contract: Contract,
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
-		const maxBlock = await progressRepository.getMaxBlockNumber(contract.contractId, event.eventId);
-		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
-			await DataService._syncEventForContractPage(
+			await to(DataService._syncEventForContractPage(
 				{
 					graphqlService,
 					progressRepository,
@@ -213,9 +206,17 @@ VALUES
 				event,
 				contract,
 				startingBlock,
-				maxBlock,
+				blockNumber,
 				page,
-			)
+			));
+
+			if (backfillProgressRepository) {
+				const max = Math.min(blockNumber, page * LIMIT + startingBlock); // max block for current page
+				const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+				const currentProgress = await backfillProgressRepository.getProgress(contract.contractId);
+				await backfillProgressRepository.updateProgress(contract.contractId, currentProgress + (max - start));
+			}
 		}
 	}
 
@@ -231,7 +232,7 @@ VALUES
 	): Promise<number[]> {
 		const progresses = await progressRepository.findSyncedBlocks(contract.contractId, event.eventId, (page - 1) * limit, limit);
 
-		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
 		const start = startingBlock + (page -1) * limit; // start block for current page
 
 		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
@@ -256,6 +257,8 @@ VALUES
 					await dataService.processEvent(result?.relatedNode, result?.decoded);
 				}
 			}
+
+			await progressRepository.add(contract.contractId, event.eventId, blockNumber);
 		}
 
 		return notSyncedBlocks;
@@ -288,7 +291,8 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode, todo): Promise<StateCids> {
+	// TODO: add decoded values
+	public async processState(relatedNode): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
@@ -458,24 +462,24 @@ VALUES
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
 
-					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value);
 				}
 			}
 		}
 	}
 
 	public static async syncStatesForContract({
-		graphqlService, stateProgressRepository, dataService
-	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository },
+		graphqlService, stateProgressRepository, dataService, backfillProgressRepository
+	}: { graphqlService: GraphqlService; dataService: DataService; stateProgressRepository: StateProgressRepository; backfillProgressRepository?: BackfillProgressRepository },
 		state: State,
 		contract: Contract,
 	): Promise<void> {
 		const startingBlock = contract.startingBlock;
-		const maxBlock = await stateProgressRepository.getMaxBlockNumber(contract.contractId, state.stateId);
-		const maxPage = Math.ceil(maxBlock / LIMIT) || 1;
+		const { blockNumber } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((blockNumber - startingBlock) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
-			await DataService._syncStatesForContractPage(
+			await to(DataService._syncStatesForContractPage(
 				{
 					graphqlService,
 					stateProgressRepository,
@@ -484,9 +488,17 @@ VALUES
 				state,
 				contract,
 				startingBlock,
-				maxBlock,
+				blockNumber,
 				page,
-			)
+			));
+
+			if (backfillProgressRepository) {
+				const max = Math.min(blockNumber, page * LIMIT + startingBlock); // max block for current page
+				const start = startingBlock + (page -1) * LIMIT; // start block for current page
+
+				const currentProgress = await backfillProgressRepository.getProgress(contract.contractId);
+				await backfillProgressRepository.updateProgress(contract.contractId, currentProgress + (max - start));
+			}
 		}
 	}
 
@@ -502,7 +514,7 @@ VALUES
 	): Promise<number[]> {
 		const progresses = await stateProgressRepository.findSyncedBlocks(contract.contractId, state.stateId, (page - 1) * limit, limit);
 
-		const max = Math.min(maxBlock, page * limit); // max block for current page
+		const max = Math.min(maxBlock, page * limit + startingBlock); // max block for current page
 		const start = startingBlock + (page -1) * limit; // start block for current page
 
 		const allBlocks = Array.from({ length: max - start + 1 }, (_, i) => i + start);
@@ -526,9 +538,11 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getStates(),
 					);
-					await dataService.processState(result.relatedNode, result.decoded);
+					await dataService.processState(result.relatedNode);
 				}
 			}
+
+			await stateProgressRepository.add(contract.contractId, state.stateId, blockNumber);
 		}
 
 		return notSyncedBlocks;
@@ -539,8 +553,8 @@ VALUES
 	}: { graphqlService: GraphqlService; dataService: DataService; headerCidsRepository: HeaderCidsRepository }
 	): Promise<void> {
 		const startingHeaderId = 1;
-		const maxHeaderId = await headerCidsRepository.getMaxHeaderId();
-		const maxPage = Math.ceil(maxHeaderId / LIMIT) || 1;
+		const { headerId } = await graphqlService.getLastBlock();
+		const maxPage = Math.ceil((headerId - startingHeaderId) / LIMIT) || 1;
 
 		for (let page = 1; page <= maxPage; page++) {
 			await DataService._syncHeadersByPage(
@@ -550,7 +564,7 @@ VALUES
 					dataService
 				},
 				startingHeaderId,
-				maxHeaderId,
+				headerId,
 				page,
 			)
 		}
@@ -566,7 +580,7 @@ VALUES
 	): Promise<number[]> {
 		const syncedHeaders = await headerCidsRepository.findSyncedHeaders((page - 1) * limit, limit);
 
-		const max = Math.min(maxHeaderId, page * limit); // max header id for current page
+		const max = Math.min(maxHeaderId, page * limit + startingHeaderId); // max header id for current page
 		const start = startingHeaderId + (page -1) * limit; // start header id for current page
 
 		const allHeaderIds = Array.from({ length: max - start + 1 }, (_, i) => i + start);
@@ -654,7 +668,7 @@ VALUES
 			data.forEach((line) => {
 				tableOptions.columns.push({
 					name: `data_${line.name.toLowerCase().trim()}`,
-					type: this._getPgType(line.internalType),
+					type: this._getPgType(line.internalType || line.type),
 					isNullable: true,
 				});
 			});

@@ -44,7 +44,7 @@ const server = async function({
 			graphqlService.subscriptionStateCids( // async
 				() => Store.getStore().getContracts(),
 				() => Store.getStore().getStates(),
-				(data) => processState(data?.relatedNode, data?.decoded)
+				(data) => processState(data?.relatedNode)
 			);
 		} else {
 			console.info('Storage watcher is not enabled');

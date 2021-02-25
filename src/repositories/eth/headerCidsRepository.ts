@@ -11,7 +11,7 @@ export default class HeaderCidsRepository extends Repository<HeaderCids> {
 		bloom,
 		cid,
 		mhKey,
-		nodeId,
+		nodeId, // eslint-disable-line
 		parentHash,
 		receiptRoot,
 		uncleRoot,
@@ -49,16 +49,6 @@ export default class HeaderCidsRepository extends Repository<HeaderCids> {
 			.offset(offset);
 
 		return query.getMany();
-	}
-
-
-	public async getMaxHeaderId(): Promise<number> {
-		const query = this.createQueryBuilder('header_cids')
-			.select("MAX(header_cids.id)", "max");
-
-		const result = await query.getRawOne();
-
-		return result?.max || 0;
 	}
 
 }

@@ -63,6 +63,7 @@ export const mockGetEventsByContractId = jest.fn().mockImplementation(function (
   return eventsByContractId[contractId];
 });
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const mockGetAddressById = jest.fn().mockImplementation(function (addressId: number): Address {
   return null;
 });

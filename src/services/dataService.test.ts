@@ -25,11 +25,11 @@ const mockGraphqlService = {
       }],
     },
   }),
-} as any;
+} as any; // eslint-disable-line
 
 const mockDataService = {
   processEvent: () => Promise.resolve(),
-} as any;
+} as any; // eslint-disable-line
 
 const mockContract = {
   contractId: 1,
@@ -148,8 +148,9 @@ describe('_syncEventForContractPage', function () {
     const mockProgressRepository = {
       findSyncedBlocks: jest.fn().mockResolvedValueOnce(
         [2, 3, 4, 5].map(blockNumber => ({ blockNumber }))
-      )
-    } as any;
+      ),
+      add: jest.fn(),
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 9;
@@ -168,8 +169,9 @@ describe('_syncEventForContractPage', function () {
 
   test('without synced blocks', async function () {
     const mockProgressRepository = {
-      findSyncedBlocks: jest.fn().mockResolvedValueOnce([])
-    } as any;
+      findSyncedBlocks: jest.fn().mockResolvedValueOnce([]),
+      add: jest.fn(),
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 9;
@@ -191,7 +193,7 @@ describe('_syncEventForContractPage', function () {
       findSyncedBlocks: jest.fn().mockResolvedValueOnce(
         [0, 1, 2].map((blockNumber) => ({ blockNumber }))
       )
-    } as any;
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 2;
@@ -217,15 +219,15 @@ describe('processState', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processState(undefined, undefined)).toEqual(undefined);
-    expect(await dataService.processState(null, null)).toEqual(undefined);
-    expect(await dataService.processState({}, {})).toEqual(undefined);
+    expect(await dataService.processState(undefined)).toEqual(undefined);
+    expect(await dataService.processState(null)).toEqual(undefined);
+    expect(await dataService.processState({})).toEqual(undefined);
   });
 
   test('no contracts', async function () {
     const stateLeafKey = "emptyStateLeafKey";
 
-    await dataService.processState({ stateLeafKey }, null);
+    await dataService.processState({ stateLeafKey });
 
     expect(mockGetStore).toBeCalledTimes(1);
     expect(mockGetContractByAddressHash).toBeCalledTimes(1);
@@ -234,7 +236,7 @@ describe('processState', function () {
   });
 
   test('check uint', async function () {
-    dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+    dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: string | number): Promise<void> { // eslint-disable-line
       return null
     });
 
@@ -254,7 +256,7 @@ describe('processState', function () {
       }
     }
 
-    const stateCids = await dataService.processState(relatedNode, null); // TODO
+    const stateCids = await dataService.processState(relatedNode); // eslint-disable-line
 
     expect(mockGetStore).toBeCalledTimes(4);
     expect(mockGetContractByAddressHash).toBeCalledTimes(2);
@@ -277,12 +279,12 @@ describe('processEvent', function () {
   });
 
   test('no logContracts and no target', async function () {
-    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {  // eslint-disable-line
       return {
         id: 0,
       } as HeaderCids;
     });
-    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {
+    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {  // eslint-disable-line
       return null
     });
 
@@ -319,12 +321,12 @@ describe('processEvent', function () {
   });
 
   test('check cycle', async function () {
-    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {  // eslint-disable-line
       return {
         id: 0,
       } as HeaderCids;
     });
-    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {
+    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {  // eslint-disable-line
       return null
     });
     dataService.addEvent = jest.fn().mockImplementation(function (): Promise<void> {
