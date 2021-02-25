@@ -1,5 +1,5 @@
 {
-  "name": "contract-watcher-js",
+  "name": "@vulcanize/eth-watcher-ts",
   "version": "0.0.1",
   "description": "Contract watcher on TypeScript",
   "scripts": {
@@ -21,6 +21,10 @@
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vulcanize/eth-watcher-ts.git"
   },
   "dependencies": {
     "@apollo/client": "^3.2.0",
