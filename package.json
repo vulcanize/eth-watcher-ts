@@ -17,6 +17,9 @@
     "static-serve": "npx serve public -p 3000",
     "test-lib": "npx ts-node ./src/test.ts"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "dependencies": {
     "@apollo/client": "^3.2.0",
     "@iarna/toml": "^2.2.5",
