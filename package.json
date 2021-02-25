@@ -1,11 +1,15 @@
 {
   "name": "@vulcanize/eth-watcher-ts",
-  "version": "0.0.1",
+  "version": "0.0.6",
+  "type": "module",
+  "types": "./dist/server.d.ts",
+  "main": "./dist/server.js",
   "description": "Contract watcher on TypeScript",
   "scripts": {
     "test": "jest",
     "lint": "npx eslint --max-warnings 0 --ext=ts,tsx .",
     "build": "npx tsc",
+    "prepublish": "npx tsc",
     "dev": "npx ts-node ./src/server.ts",
     "start": "NODE_ENV=production npx node ./dist/server.js",
     "sync": "TS_NODE_FILES=true TS_NODE_TRANSPILE_ONLY=true npx ts-node ./src/syncDaemon.ts",
