@@ -13,6 +13,17 @@ describe('utils', function () {
         expect(getContractsFromLogs(contracts, logs)[0].address).toEqual("0x2");
 
     })
+    test('getContractFromLogs: multiple contract', function () {
+        let contracts: Contract[] = [
+            dummyContract("0x1"),
+            dummyContract("0x2"),
+        ];
+        let logs = ["0x1", "0x2", "0x3", "0x4"];
+        expect(getContractsFromLogs(contracts, logs)).not.toBeNull();
+        expect(getContractsFromLogs(contracts, logs).length).toEqual(2);
+        expect(getContractsFromLogs(contracts, logs)[0].address).toEqual("0x1");
+        expect(getContractsFromLogs(contracts, logs)[1].address).toEqual("0x2");
+    })
     test('getContractFromLogs: lower case', function () {
         const contracts = [
             dummyContract("0x1AbC"),
