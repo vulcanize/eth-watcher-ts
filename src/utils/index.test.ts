@@ -35,6 +35,5 @@ function dummyContract(address: string): Contract {
         allAbis: [],
         events: [],
         methods: [],
-        abis: []
     }
 }

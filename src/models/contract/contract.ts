@@ -28,16 +28,10 @@ export default class Contract {
 	@Column("int4", { name: "states", nullable: true, array: true })
 	states: number[] | null;
 
-	@Column("int4", { name: "abis", nullable: true, array: true })
-	abis: number[] | null;
-
 	@Column("integer", { name: "starting_block" })
 	startingBlock: number;
 
 	@ManyToMany(() => AbiTable)
 	@JoinTable({name: "contract_to_abi", joinColumn: {name: "contract_id"}, inverseJoinColumn: {name: "abi_id"}})
 	allAbis: ABI[];
-
-	//@OneToMany(() => ContractToAbi, (contractToAbi) => contractToAbi.contract)
-	//contractToAbis: ContractToAbi[];
 }
