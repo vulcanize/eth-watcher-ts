@@ -19,11 +19,11 @@ export default class Config {
 		return Config.config;
 	}
 
-	public static getEnv(customEnv?) {
+	public static getEnv(customEnv?): any { // eslint-disable-line
 		return this.getConfig(customEnv).env;
 	}
 
-	private static loadEnv(customEnv = {}) {
+	private static loadEnv(customEnv = {}): any { // eslint-disable-line
 		let tomlConfig = null;
 		try {
 			const tomlFile = fs.readFileSync(path.join(__dirname, '../config.toml'), 'utf8');
