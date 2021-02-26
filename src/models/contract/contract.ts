@@ -1,7 +1,6 @@
-import {Column, Entity, Index, JoinTable, ManyToMany, OneToMany, PrimaryGeneratedColumn} from "typeorm";
+import {Column, Entity, Index, JoinTable, ManyToMany, PrimaryGeneratedColumn} from "typeorm";
 import {ABI} from "../../types";
 import { Abi as AbiTable } from "./abi";
-import {ContractToAbi} from "../../../output/entities/ContractToAbi";
 
 @Index("contracts_pk", ["contractId"], { unique: true })
 @Entity("contracts", { schema: "contract" })

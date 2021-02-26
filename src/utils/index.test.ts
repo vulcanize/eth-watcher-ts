@@ -1,24 +1,38 @@
 import Contract from "../models/contract/contract";
 import {getContractsFromLogs} from "./index";
 
+function dummyContract(address: string): Contract {
+    return {
+        contractId: 1,
+        name: "abc",
+        address,
+        abi: [],
+        states: [],
+        startingBlock: 1,
+        allAbis: [],
+        events: [],
+        methods: [],
+    }
+}
+
 describe('utils', function () {
     test('getContractFromLogs: single contract', function () {
-        let contracts: Contract[] = [
+        const contracts: Contract[] = [
             dummyContract("0x1"),
             dummyContract("0x2"),
         ];
-        let logs = ["0x2", "0x3", "0x4"];
+        const logs = ["0x2", "0x3", "0x4"];
         expect(getContractsFromLogs(contracts, logs)).not.toBeNull();
         expect(getContractsFromLogs(contracts, logs).length).toEqual(1);
         expect(getContractsFromLogs(contracts, logs)[0].address).toEqual("0x2");
 
     })
     test('getContractFromLogs: multiple contract', function () {
-        let contracts: Contract[] = [
+        const contracts: Contract[] = [
             dummyContract("0x1"),
             dummyContract("0x2"),
         ];
-        let logs = ["0x1", "0x2", "0x3", "0x4"];
+        const logs = ["0x1", "0x2", "0x3", "0x4"];
         expect(getContractsFromLogs(contracts, logs)).not.toBeNull();
         expect(getContractsFromLogs(contracts, logs).length).toEqual(2);
         expect(getContractsFromLogs(contracts, logs)[0].address).toEqual("0x1");
@@ -34,17 +48,3 @@ describe('utils', function () {
         expect(getContractsFromLogs(contracts, logs)[0].address).toEqual("0x2ZeUq");
     })
 });
-
-function dummyContract(address: string): Contract {
-    return {
-        contractId: 1,
-        name: "abc",
-        address,
-        abi: [],
-        states: [],
-        startingBlock: 1,
-        allAbis: [],
-        events: [],
-        methods: [],
-    }
-}
