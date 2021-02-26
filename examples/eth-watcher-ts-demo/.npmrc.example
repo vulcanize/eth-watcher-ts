@@ -1,0 +1,3 @@
+registry=https://registry.npmjs.org/
+@vulcanize:registry=https://npm.pkg.github.com/
+//npm.pkg.github.com/:_authToken=TOKEN

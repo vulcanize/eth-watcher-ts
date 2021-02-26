@@ -2,7 +2,6 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import * as cron from 'node-cron';
-import * as ws from 'ws';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
 import StateProgressRepository from './repositories/data/stateProgressRepository';
@@ -13,8 +12,9 @@ import State from './models/contract/state';
 import Store from './store';
 import DataService from './services/dataService';
 import GraphqlService from './services/graphqlService';
-import env from './env';
+import Config from './config';
 import GraphqlClient from './graphqlClient';
+const ws = require('ws'); // eslint-disable-line
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);
@@ -23,6 +23,8 @@ process.on('unhandledRejection', (reason, p) => {
 
 console.log('Cron daemon is started');
 (async (): Promise<void> => {
+	const env = Config.getEnv();
+
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
 

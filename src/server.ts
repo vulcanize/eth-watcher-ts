@@ -2,17 +2,23 @@ import { createServer } from 'http';
 import Store from './store';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import postgraphile from 'postgraphile';
-import * as ws from 'ws';
 import App from './app';
-import env from './env';
+import Config from './config';
 import GraphqlService from './services/graphqlService';
 import GraphqlClient from './graphqlClient';
+const ws = require('ws'); // eslint-disable-line
 
 const server = async function({
 	processEvent,
 	processHeader,
 	processState
-}): Promise<void> {
+}: {
+	processEvent: Function;
+	processHeader: Function;
+	processState: Function;
+}, customEnv?): Promise<void> {
+	const env = Config.getEnv(customEnv);
+
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
 		const app = new App();
@@ -26,7 +32,11 @@ const server = async function({
 			graphqlService.subscriptionReceiptCids( // async
 				() => Store.getStore().getContracts(),
 				() => Store.getStore().getEvents(),
-				(data) => processEvent(data?.relatedNode, data?.decoded)
+				(data) => processEvent(
+					data?.relatedNode,
+					data?.decoded as {name: string; value: string | number }[],
+					data?.meta as {name: string; value: string | number }[]
+				)
 			);
 		} else {
 			console.info('Event watcher is not enabled');
@@ -44,7 +54,11 @@ const server = async function({
 			graphqlService.subscriptionStateCids( // async
 				() => Store.getStore().getContracts(),
 				() => Store.getStore().getStates(),
-				(data) => processState(data?.relatedNode)
+				(data) => processState(
+					data?.relatedNode,
+					data?.decoded as {name: string; value: string | number }[],
+					data?.meta as {name: string; value: string | number }[]
+				)
 			);
 		} else {
 			console.info('Storage watcher is not enabled');
@@ -83,3 +97,5 @@ const server = async function({
 }
 
 export default server;
+
+module.exports = server;

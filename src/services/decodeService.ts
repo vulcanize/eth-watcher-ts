@@ -29,7 +29,7 @@ const INDEX = [
 
 export default class DecodeService {
 
-	public static async decodeReceiptCid(relatedNode, contracts: Contract[] | Function, events: Event[] | Function): Promise<{relatedNode; decoded}>{
+	public static async decodeReceiptCid(relatedNode, contracts: Contract[] | Function, events: Event[] | Function): Promise<{relatedNode; decoded; meta}>{
 		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
 			return;
 		}
@@ -52,6 +52,7 @@ export default class DecodeService {
 			return;
 		}
 
+		let meta = [];
 		for (const e of targetEvents) {
 			const contractAbi = targetContract.abi as ABI;
 			const event = contractAbi.find((a) => a.name === e.name);
@@ -83,6 +84,20 @@ export default class DecodeService {
 					const hashFromBlock = decoded[3][index][1][0].toString('hex');
 					console.log(hashFromBlock);
 
+					meta = meta.concat([{
+						name: 'event',
+						value: event.name,
+					}, {
+						name: 'block_hash',
+						value: hashFromBlock,
+					}, {
+						name: 'keccak256',
+						value: hash,
+					}, {
+						name: 'payload',
+						value: payload,
+					}]);
+
 					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 					const indexedEvents = event.inputs.filter(input => input.indexed);
 
@@ -112,6 +127,7 @@ export default class DecodeService {
 					console.log('array', array);
 
 					return {
+						meta,
 						relatedNode,
 						decoded: array,
 					};
@@ -120,12 +136,13 @@ export default class DecodeService {
 		}
 
 		return {
+			meta,
 			relatedNode,
 			decoded: null,
 		};
 	}
 
-	public static async decodeStateCid(relatedNode, contracts: Contract[] | Function, states: State[] | Function): Promise<{relatedNode; decoded}>{
+	public static async decodeStateCid(relatedNode, contracts: Contract[] | Function, states: State[] | Function): Promise<{relatedNode; decoded; meta}>{
 			if (!relatedNode || !relatedNode.stateLeafKey || !relatedNode?.storageCidsByStateId?.nodes?.length) {
 				return;
 			}
@@ -145,15 +162,28 @@ export default class DecodeService {
 
 			const targetStates = (states as State[]).filter((state) => targetContract.states.includes(state.stateId));
 
-			console.log(JSON.stringify(relatedNode, null, 2));
-
 			const array: { name: string; value: string | number }[] = [];
+			let meta: { name: string; value: string | number }[] = [];
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {
 					const structure = toStructure(state.type, state.variable);
 
 					console.log('structure', structure);
+
+					meta = meta.concat([{
+						name: 'contract_address',
+						value: targetContract.address,
+					}, {
+						name: 'slot',
+						value: state.slot,
+					}, {
+						name: 'type',
+						value: state.type,
+					}, {
+						name: 'variable',
+						value: state.variable,
+					}]);
 
 					if (structure.type === 'mapping') {
 						if (structure.value.type === 'simple') {
@@ -283,6 +313,7 @@ export default class DecodeService {
 			return {
 				relatedNode,
 				decoded: array,
+				meta,
 			};
 	}
 }

@@ -1,7 +1,6 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import * as ws from 'ws';
 import {createConnection, getConnection, getConnectionOptions} from 'typeorm';
 import ProgressRepository from './repositories/data/progressRepository';
 import StateProgressRepository from './repositories/data/stateProgressRepository';
@@ -12,8 +11,9 @@ import State from './models/contract/state';
 import Store from './store';
 import DataService from './services/dataService';
 import GraphqlService from './services/graphqlService';
-import env from './env';
+import Config from './config';
 import GraphqlClient from './graphqlClient';
+const ws = require('ws'); // eslint-disable-line
 
 const ids = process.argv.slice(2);
 
@@ -22,6 +22,8 @@ console.log('Backfill service contract ids', ids);
 if (!ids || ids.length === 0) {
 	throw new Error('Contract ids is required');
 }
+
+const env = Config.getEnv();
 
 process.on('unhandledRejection', (reason, p) => {
 	console.log('Unhandled Rejection at:', p, 'reason:', reason);

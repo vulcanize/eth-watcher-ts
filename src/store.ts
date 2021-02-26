@@ -5,7 +5,7 @@ import State from "./models/contract/state";
 import Address from "./models/data/address";
 import ContractService from "./services/contractService";
 import DataService from "./services/dataService";
-import env from './env';
+import Config from './config';
 
 export default class Store {
 	private static store: Store;
@@ -43,7 +43,7 @@ export default class Store {
 
 		store.syncData();
 		if (autoUpdate) {
-			setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
+			setInterval(store.syncData, Config.getEnv().CONFIG_RELOAD_INTERVAL);
 		}
 	}
 
