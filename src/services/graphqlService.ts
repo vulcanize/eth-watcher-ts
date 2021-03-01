@@ -4,6 +4,7 @@ import State from '../models/contract/state';
 import Contract from '../models/contract/contract';
 import Event from '../models/contract/event';
 import DecodeService from '../services/decodeService';
+import {ContractFunction, EventFunction, StateFunction} from "../types";
 
 export default class GraphqlService {
 	private graphqlRepository: GraphqlRepository;
@@ -31,7 +32,7 @@ export default class GraphqlService {
 		return this.graphqlRepository.ethHeaderCidById(headerId);
 	}
 
-	public async subscriptionReceiptCids(contracts: Contract[] | Function, events: Event[] | Function, func: (value) => void): Promise<void> {
+	public async subscriptionReceiptCids(contracts: Contract[] | ContractFunction, events: Event[] | EventFunction, func: (value) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionReceiptCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeReceiptCid(relatedNode, contracts, events);
@@ -43,7 +44,7 @@ export default class GraphqlService {
 		return this.graphqlRepository.subscriptionHeaderCids(func, (error) => {console.log(error)});
 	}
 
-	public async subscriptionStateCids(contracts: Contract[] | Function, states: State[] | Function, func: (value) => void): Promise<void> {
+	public async subscriptionStateCids(contracts: Contract[] | ContractFunction, states: State[] | StateFunction, func: (value) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionStateCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;
 			const result = await DecodeService.decodeStateCid(relatedNode, contracts, states);

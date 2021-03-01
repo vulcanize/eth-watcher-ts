@@ -12,7 +12,7 @@
     "prepublish": "npx tsc",
     "dev": "npx ts-node ./src/run.ts",
     "start": "NODE_ENV=production npx node ./dist/run.js",
-    "sync": "TS_NODE_FILES=true TS_NODE_TRANSPILE_ONLY=true npx ts-node ./src/syncDaemon.ts",
+    "sync": "npx ts-node ./src/syncDaemon.ts",
     "prod": "npm run build && npm run start",
     "migrate:up": "npx ts-node ./node_modules/typeorm/cli.js migration:run",
     "//": "downgrade last migration",
