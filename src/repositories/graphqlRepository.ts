@@ -20,7 +20,7 @@ export default class GraphqlRepository {
 
 	public async getLastBlock(): Promise<{headerId; blockNumber}> {
 		const data = await this.graphqlClient.query(`
-			query MyQuery {
+			query LastBlock {
 				allEthHeaderCids(last: 1) {
 					nodes {
 						id
@@ -100,7 +100,7 @@ export default class GraphqlRepository {
 
 	public ethHeaderCidWithStateByBlockNumber(blockNumber: string | number): Promise<unknown> {
 		return this.graphqlClient.query(`
-			query MyQuery {
+			query QueryHeaderAndStorageByBlockNumber {
 				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
 					nodes {
 						stateCidsByHeaderId {
@@ -140,7 +140,7 @@ export default class GraphqlRepository {
 
 	public ethHeaderCidById(headerId: number): Promise<unknown> {
 		return this.graphqlClient.query(`
-			query MyQuery {
+			query QueryHeaderById {
 				ethHeaderCidById(id: ${headerId}) {
 					id
 					td
@@ -167,7 +167,7 @@ export default class GraphqlRepository {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public subscriptionReceiptCids(onNext: (value: any) => void, onError: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
-			subscription MySubscription {
+			subscription SubscriptionReceipt {
 				listen(topic: "receipt_cids") {
 					relatedNode {
 					... on ReceiptCid {
@@ -226,7 +226,7 @@ export default class GraphqlRepository {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public subscriptionHeaderCids(onNext: (value: any) => void, onError: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
-			subscription MySubscription {
+			subscription SubscriptionHeader {
 				listen(topic: "header_cids") {
 					relatedNode {
 					... on EthHeaderCid {
@@ -257,7 +257,7 @@ export default class GraphqlRepository {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	public subscriptionStateCids(onNext: (value: any) => void, onError?: (error: any) => void): Promise<void> {
 		return this.graphqlClient.subscribe(`
-			subscription MySubscription {
+			subscription SubscriptionStorage {
 				listen(topic: "state_cids") {
 					relatedNode {
 					... on StateCid {
