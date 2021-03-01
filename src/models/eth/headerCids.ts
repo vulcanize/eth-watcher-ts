@@ -3,7 +3,7 @@ import {
 	Entity,
 	Index,
 	OneToMany,
-	PrimaryGeneratedColumn,
+	PrimaryGeneratedColumn, Unique,
 } from "typeorm";
 import StateCids from "./stateCids";
 import TransactionCids from "./transactionCids";
@@ -16,6 +16,7 @@ import UncleCids from "./uncleCids";
 )
 @Index("header_cids_pkey", ["id"], { unique: true })
 @Entity("header_cids", { schema: "eth" })
+@Unique(["blockNumber", "blockHash"])
 export default class HeaderCids {
 	@PrimaryGeneratedColumn({ type: "integer", name: "id" })
 	id: number;

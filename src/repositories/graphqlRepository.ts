@@ -38,7 +38,7 @@ export default class GraphqlRepository {
 
 	public ethHeaderCidWithTransactionByBlockNumber(blockNumber: string | number): Promise<unknown> {
 		return this.graphqlClient.query(`
-			query MyQuery {
+			query QueryHeaderAndReceiptByBlockNumber {
 				ethHeaderCidByBlockNumber(n: "${blockNumber}") {
 					nodes {
 						ethTransactionCidsByHeaderId {
@@ -59,8 +59,34 @@ export default class GraphqlRepository {
 										data
 									}
 									ethTransactionCidByTxId {
+										id
+										cid
+										headerId
+										index
+										mhKey
+										nodeId
+										dst
+										src
+										txData
+										txHash
 										ethHeaderCidByHeaderId {
+											id
+											td
+											blockHash
 											blockNumber
+											bloom
+											cid
+											mhKey
+											nodeId
+											ethNodeId
+											parentHash
+											receiptRoot
+											reward
+											timesValidated
+											timestamp
+											txRoot
+											uncleRoot
+											stateRoot
 										}
 									}
 								}

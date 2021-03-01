@@ -4,13 +4,18 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
 import { toStructure } from './dataTypeParser';
-import {ABI, ContractFunction, EventFunction, StateFunction} from "../types";
+import {
+	ABI,
+	ABIInputData,
+	ContractFunction,
+	DecodeReceiptResult,
+	EventFunction,
+	EthReceiptCid,
+	StateFunction
+} from "../types";
 import {getContractsFromLogs} from "../utils";
 
-type ABIInputData = {
-	name: string;
-	value?: any; // eslint-disable-line
-}
+
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -30,7 +35,7 @@ const INDEX = [
 
 export default class DecodeService {
 
-	public static async decodeReceiptCid(relatedNode, contracts: Contract[] | ContractFunction, events: Event[] | EventFunction): Promise<{relatedNode; decoded}> {
+	public static async decodeReceiptCid(relatedNode: EthReceiptCid, contracts: Contract[] | ContractFunction, events: Event[] | EventFunction): Promise<DecodeReceiptResult> {
 		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
 			return;
 		}
@@ -44,77 +49,81 @@ export default class DecodeService {
 		}
 
 		const targetContracts = getContractsFromLogs(contracts, relatedNode.logContracts);
-		for (const targetContract of targetContracts) {
+		if (!targetContracts.length) {
+			return;
+		}
+		// @TODO process all contracts
+		const targetContract = targetContracts[0];
 
-			const targetEvents = (events as Event[]).filter((event) => targetContract.events.includes(event.eventId));
-			if (!targetContract || !targetEvents || targetEvents.length === 0) {
-				return;
+		const targetEvents = (events as Event[]).filter((event) => targetContract.events.includes(event.eventId));
+		if (!targetContract || !targetEvents || targetEvents.length === 0) {
+			return;
+		}
+
+		for (const e of targetEvents) {
+			const contractAbi = (targetContract.abi as ABI).concat(...targetContract.allAbis);
+			const event = contractAbi.find((a) => a.name === e.name);
+
+			if (!event) {
+				continue;
 			}
 
-			for (const e of targetEvents) {
-				const contractAbi = (targetContract.abi as ABI).concat(...targetContract.allAbis);
-				const event = contractAbi.find((a) => a.name === e.name);
+			const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
+			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
 
-				if (!event) {
-					continue;
-				}
+			console.log('payload', payload);
+			console.log('hash', hash);
 
-				const payload = `${event.name}(${event.inputs.map(input => input.internalType).join(',')})`;
-				const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+			if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
+				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
 
-				console.log('payload', payload);
-				console.log('hash', hash);
+				if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
+					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x', ''), 'hex');
+					const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
-				if (relatedNode.topic0S && relatedNode.topic0S.length && (relatedNode.topic0S as Array<string>).includes(hash)) {
-					const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
+					// console.log(decoded[0].toString('hex'));
+					// console.log(decoded[1].toString('hex'));
+					// console.log(decoded[2].toString('hex'));
 
-					if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-						const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x', ''), 'hex');
-						const decoded: any = rlp.decode(buffer); // eslint-disable-line
+					const addressFromBlock = decoded[3][index][0].toString('hex');
+					console.log('address', addressFromBlock);
 
-						// console.log(decoded[0].toString('hex'));
-						// console.log(decoded[1].toString('hex'));
-						// console.log(decoded[2].toString('hex'));
+					const hashFromBlock = decoded[3][index][1][0].toString('hex');
+					console.log(hashFromBlock);
 
-						const addressFromBlock = decoded[3][index][0].toString('hex');
-						console.log('address', addressFromBlock);
+					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
+					const indexedEvents = event.inputs.filter(input => input.indexed);
 
-						const hashFromBlock = decoded[3][index][1][0].toString('hex');
-						console.log(hashFromBlock);
+					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
 
-						const notIndexedEvents = event.inputs.filter(input => !input.indexed);
-						const indexedEvents = event.inputs.filter(input => input.indexed);
+					const array: ABIInputData[] = [];
+					indexedEvents.forEach((input, index) => {
+						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x', '');
 
-						const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
-
-						const array: ABIInputData[] = [];
-						indexedEvents.forEach((event, index) => {
-							const topic = relatedNode[`topic${index + 1}S`][0].replace('0x', '');
-
-							try {
-								array.push({
-									name: event.name,
-									value: abi.rawDecode([event.internalType], Buffer.from(topic, 'hex'))[0],
-								});
-							} catch (e) {
-								console.log('Error wtih', event.name, event.internalType, e.message);
-							}
-						});
-
-						notIndexedEvents.forEach((event, index) => {
+						try {
 							array.push({
-								name: event.name,
-								value: messages[index],
+								name: input.name,
+								value: abi.rawDecode([input.internalType], Buffer.from(topic, 'hex'))[0],
 							});
+						} catch (e) {
+							console.log('Error abi decode', input.name, input.internalType, e.message);
+						}
+					});
+
+					notIndexedEvents.forEach((input, index) => {
+						array.push({
+							name: input.name,
+							value: messages[index],
 						});
+					});
 
-						console.log('array', array);
+					console.log('array', array);
 
-						return {
-							relatedNode,
-							decoded: array,
-						};
-					}
+					return {
+						relatedNode,
+						decoded: array,
+						event
+					};
 				}
 			}
 		}
@@ -122,6 +131,7 @@ export default class DecodeService {
 		return {
 			relatedNode,
 			decoded: null,
+			event: null,
 		};
 	}
 
