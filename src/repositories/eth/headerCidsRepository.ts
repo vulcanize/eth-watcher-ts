@@ -1,43 +1,38 @@
-import {EntityRepository, Repository} from 'typeorm';
+import {DeepPartial, EntityRepository, Repository} from 'typeorm';
 import HeaderCids from '../../models/eth/headerCids';
+import {EthHeaderCid} from "../../types";
 
 @EntityRepository(HeaderCids)
 export default class HeaderCidsRepository extends Repository<HeaderCids> {
 
-	public async add({
-		td,
-		blockHash,
-		blockNumber,
-		bloom,
-		cid,
-		mhKey,
-		nodeId, // eslint-disable-line
-		parentHash,
-		receiptRoot,
-		uncleRoot,
-		stateRoot,
-		txRoot,
-		reward,
-		timesValidated,
-		timestamp,
-	}): Promise<HeaderCids> {
-		return this.save({
-			td,
-			blockHash,
-			blockNumber,
-			bloom,
-			cid,
-			mhKey,
-			nodeId: 1, // TODO: fix it
-			parentHash,
-			receiptRoot,
-			uncleRoot,
-			stateRoot,
-			txRoot,
-			reward,
-			timesValidated,
-			timestamp,
-		});
+	public async add(header: EthHeaderCid): Promise<HeaderCids> {
+		const {td, blockHash, blockNumber, bloom, cid, mhKey, parentHash, receiptRoot, uncleRoot, stateRoot, txRoot,
+			reward, timesValidated, timestamp} = header;
+		const result = await this.createQueryBuilder()
+			.insert()
+			.values({
+				td,
+				blockHash,
+				blockNumber,
+				bloom,
+				cid,
+				mhKey,
+				nodeId: 1, // TODO: fix it
+				parentHash,
+				receiptRoot,
+				uncleRoot,
+				stateRoot,
+				txRoot,
+				reward,
+				timesValidated,
+				timestamp,
+			})
+			.returning("*")
+			// eslint-disable-next-line @typescript-eslint/camelcase
+			.orUpdate({conflict_target: ["block_number", "block_hash"], overwrite: ["parent_hash", "cid", "mh_key", "td", "node_id"]})
+			.execute();
+
+		return this.create(result.generatedMaps[0] as DeepPartial<HeaderCids>)
 	}
 
 	public async findSyncedHeaders(offset = 0, limit = 1000): Promise<HeaderCids[]> {

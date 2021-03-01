@@ -1,4 +1,6 @@
-import { Column, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import {Column, Entity, Index, JoinTable, ManyToMany, PrimaryGeneratedColumn} from "typeorm";
+import {ABI} from "../../types";
+import { Abi as AbiTable } from "./abi";
 
 @Index("contracts_pk", ["contractId"], { unique: true })
 @Entity("contracts", { schema: "contract" })
@@ -28,4 +30,7 @@ export default class Contract {
 	@Column("integer", { name: "starting_block" })
 	startingBlock: number;
 
+	@ManyToMany(() => AbiTable)
+	@JoinTable({name: "contract_to_abi", joinColumn: {name: "contract_id"}, inverseJoinColumn: {name: "abi_id"}})
+	allAbis: ABI[];
 }

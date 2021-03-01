@@ -24,7 +24,7 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
-import { ABI, ABIInput } from "../types/abi";
+import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthTransactionCid} from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 
 const LIMIT = 1000;
@@ -93,7 +93,7 @@ export default class DataService {
 				value: mhKey,
 				isStrict: true,
 			},
-			data]);
+			...data]);
 		});
 	}
 
@@ -115,7 +115,7 @@ VALUES
 			const [err] = await to(entityManager.queryRunner.query(sql));
 			if (err) {
 				// TODO: throw err
-				console.log(err);	
+				console.log(err);
 			}
 		});
 	}
@@ -148,7 +148,7 @@ VALUES
 		return pgType;
 	}
 
-	public async processEvent(relatedNode, decoded = []): Promise<void> {
+	public async processEvent(contract: Contract, relatedNode: EthReceiptCid, decoded: ABIInputData[], event: ABIElem): Promise<void> {
 		if (!relatedNode || !decoded) {
 			return;
 		}
@@ -161,29 +161,21 @@ VALUES
 			return;
 		}
 
-		const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
+		const target = contract;
 		if (!target || !target.events) {
 			return;
 		}
-
-		const contractAbi = target.abi as ABI;
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
-		for (const d of decoded) {
-			const event = contractAbi.find((a) => a.inputs.map((i) => i.name).includes(d.name));
-			if (!event) {
-				continue;
-			}
 
-			const e = targetEvents.find((e) => e.name === event.name);
-			await this.addEvent(
-				e.eventId,
-				target.contractId,
-				d,
-				relatedNode.mhKey,
-			);
+		const e = targetEvents.find((e) => e.name === event.name);
+		await this.addEvent(
+			e.eventId,
+			target.contractId,
+			decoded,
+			relatedNode.mhKey,
+		);
 
-			console.log('Event saved');
-		}
+		console.log(`Event ${event.name} saved`);
 	}
 
 	public static async syncEventForContract({
@@ -254,7 +246,7 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getEvents(),
 					);
-					await dataService.processEvent(result?.relatedNode, result?.decoded);
+					await dataService.processEvent(contract, result?.relatedNode, result?.decoded, result?.event);
 				}
 			}
 
@@ -264,7 +256,7 @@ VALUES
 		return notSyncedBlocks;
 	}
 
-	public async processTransaction(ethTransaction, headerId: number): Promise<TransactionCids> {
+	public async processTransaction(ethTransaction: EthTransactionCid, headerId: number): Promise<TransactionCids> {
 		if (!ethTransaction) {
 			return;
 		}
@@ -277,7 +269,7 @@ VALUES
 		});
 	}
 
-	public async processHeader(relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+	public async processHeader(relatedNode: EthHeaderCid): Promise<HeaderCids> {
 
 		if (!relatedNode) {
 			return;
@@ -319,7 +311,7 @@ VALUES
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					if (structure.value.type === 'simple') {
@@ -617,7 +609,7 @@ VALUES
 						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
 						if (!isExist) {
 							const hash = DataService._getKeyForMapping(adr.address, state.slot);
-							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);
 						}
 					}
 				}

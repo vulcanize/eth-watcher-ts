@@ -37,7 +37,7 @@ export default class Store {
 
 		return Store.store;
 	}
-	
+
 	public static init(autoUpdate = true): void {
 		const store = this.getStore();
 
@@ -127,11 +127,11 @@ export default class Store {
 		await Store.store.dataService?.createTables(Store.store.contracts);
 		await Store.store.dataService?.prepareAddresses(Store.store.contracts);
 
-		console.log(`Contracts: \t${Store.store.contracts?.length}`);
-		console.log(`Events: \t${Store.store.events?.length}`);
-		console.log(`Methods: \t${Store.store.methods?.length}`);
-		console.log(`States: \t${Store.store.states?.length}`);
-		console.log(`Addresses: \t${Store.store.addresses?.length}`);
+		// console.log(`Contracts: \t${Store.store.contracts?.length}`);
+		// console.log(`Events: \t${Store.store.events?.length}`);
+		// console.log(`Methods: \t${Store.store.methods?.length}`);
+		// console.log(`States: \t${Store.store.states?.length}`);
+		// console.log(`Addresses: \t${Store.store.addresses?.length}`);
 	}
 
 }
