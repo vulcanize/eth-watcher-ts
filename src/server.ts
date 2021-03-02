@@ -17,8 +17,8 @@ const server = async function({
 	processEvent: ProcessEventFunction;
 	processHeader: ProcessHeaderFunction;
 	processState: ProcessStateFunction;
-}, customEnv?): Promise<void> {
-	const env = Config.getEnv(customEnv);
+}, config?): Promise<void> {
+	const env = Config.getEnv(config);
 
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
@@ -89,6 +89,6 @@ const server = async function({
 	}
 }
 
-export default server;
-
-module.exports = server;
+export {
+	server as EthWatcherServer
+};

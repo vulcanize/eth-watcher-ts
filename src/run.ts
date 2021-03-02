@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import EthWatcherServer from './server';
+import { EthWatcherServer } from './server';
 import DataService from './services/dataService';
 
 process.on('unhandledRejection', (reason, p) => {
