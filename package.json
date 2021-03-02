@@ -9,7 +9,7 @@
     "test": "jest",
     "lint": "npx eslint --max-warnings 0 --ext=ts,tsx .",
     "build": "npx tsc",
-    "prepublish": "npx tsc",
+    "prepare": "npx tsc",
     "dev": "npx ts-node ./src/run.ts",
     "start": "NODE_ENV=production npx node ./dist/run.js",
     "sync": "npx ts-node ./src/syncDaemon.ts",
