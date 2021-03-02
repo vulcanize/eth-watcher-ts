@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
+import {EthReceiptCid, EthStateCid} from "../types";
+
 jest.mock('../store');
 jest.mock('../repositories/data/addressIdSlotIdRepository');
 
@@ -221,13 +223,13 @@ describe('processState', function () {
   test('empty args', async function () {
     expect(await dataService.processState(undefined)).toEqual(undefined);
     expect(await dataService.processState(null)).toEqual(undefined);
-    expect(await dataService.processState({})).toEqual(undefined);
+    expect(await dataService.processState({} as unknown as EthStateCid)).toEqual(undefined);
   });
 
   test('no contracts', async function () {
     const stateLeafKey = "emptyStateLeafKey";
 
-    await dataService.processState({ stateLeafKey });
+    await dataService.processState({ stateLeafKey } as unknown as EthStateCid);
 
     expect(mockGetStore).toBeCalledTimes(1);
     expect(mockGetContractByAddressHash).toBeCalledTimes(1);
@@ -254,7 +256,7 @@ describe('processState', function () {
           },
         }]
       }
-    }
+    } as unknown as EthStateCid;
 
     const stateCids = await dataService.processState(relatedNode); // eslint-disable-line
 
@@ -274,8 +276,8 @@ describe('processEvent', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processEvent(undefined, undefined)).toEqual(undefined);
-    expect(await dataService.processEvent(null, null)).toEqual(undefined);
+    expect(await dataService.processEvent(undefined, undefined, undefined, undefined)).toEqual(undefined);
+    expect(await dataService.processEvent(null,null, null, null)).toEqual(undefined);
   });
 
   test('no logContracts and no target', async function () {
@@ -292,11 +294,11 @@ describe('processEvent', function () {
       ethTransactionCidByTxId: {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       }
-    };
-    const resp1 = await dataService.processEvent(relatedNode1, [{
+    } as unknown as EthReceiptCid;
+    const resp1 = await dataService.processEvent(null, relatedNode1, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], null);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith(relatedNode1.ethTransactionCidByTxId.ethHeaderCidByHeaderId)
@@ -311,11 +313,11 @@ describe('processEvent', function () {
       logContracts: [
         "veryUniqueAddress"
       ]
-    };
-    const resp2 = await dataService.processEvent(relatedNode2, [{
+    } as unknown as EthReceiptCid;
+    const resp2 = await dataService.processEvent(null, relatedNode2, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], null);
     expect(mockGetContracts).toBeCalledTimes(1);
     expect(resp2).toEqual(undefined);
   });
@@ -333,7 +335,7 @@ describe('processEvent', function () {
       return null
     })
 
-    await dataService.processEvent({
+    await dataService.processEvent(null, {
       ethTransactionCidByTxId: {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       },
@@ -346,10 +348,12 @@ describe('processEvent', function () {
       blockByMhKey: {
         data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
       },
-    }, [{
+    }  as unknown as EthReceiptCid, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], {
+      name: 'ename'
+    } as undefined);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith("0xheaderCidByHeaderId")

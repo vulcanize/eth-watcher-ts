@@ -9,13 +9,13 @@ import {
 	ABIInputData,
 	ContractFunction,
 	DecodeReceiptResult,
+	DecodeStateResult,
 	EventFunction,
 	EthReceiptCid,
-	StateFunction
+	StateFunction,
+	EthStateCid,
 } from "../types";
 import {getContractsFromLogs} from "../utils";
-
-
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -60,7 +60,7 @@ export default class DecodeService {
 			return;
 		}
 
-		let meta = [];
+		const meta = {} as any; // eslint-disable-line
 		for (const e of targetEvents) {
 			const contractAbi = (targetContract.abi as ABI).concat(...targetContract.allAbis);
 			const event = contractAbi.find((a) => a.name === e.name);
@@ -92,19 +92,10 @@ export default class DecodeService {
 					const hashFromBlock = decoded[3][index][1][0].toString('hex');
 					console.log(hashFromBlock);
 
-					meta = meta.concat([{
-						name: 'event',
-						value: event.name,
-					}, {
-						name: 'block_hash',
-						value: hashFromBlock,
-					}, {
-						name: 'keccak256',
-						value: hash,
-					}, {
-						name: 'payload',
-						value: payload,
-					}]);
+					meta.event = event.name;
+					meta.blockHash = hashFromBlock;
+					meta.keccak256 = hash;
+					meta.payload = payload;
 
 					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 					const indexedEvents = event.inputs.filter(input => input.indexed);
@@ -152,7 +143,7 @@ export default class DecodeService {
 		};
 	}
 
-	public static async decodeStateCid(relatedNode, contracts: Contract[] | ContractFunction, states: State[] | StateFunction): Promise<{relatedNode; decoded; meta}>{
+	public static async decodeStateCid(relatedNode: EthStateCid, contracts: Contract[] | ContractFunction, states: State[] | StateFunction): Promise<DecodeStateResult>{
 			if (!relatedNode || !relatedNode.stateLeafKey || !relatedNode?.storageCidsByStateId?.nodes?.length) {
 				return;
 			}
@@ -173,7 +164,7 @@ export default class DecodeService {
 			const targetStates = (states as State[]).filter((state) => targetContract.states.includes(state.stateId));
 
 			const array: { name: string; value: string | number }[] = [];
-			let meta: { name: string; value: string | number }[] = [];
+			const meta = {} as any; // eslint-disable-line
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {
@@ -181,19 +172,10 @@ export default class DecodeService {
 
 					console.log('structure', structure);
 
-					meta = meta.concat([{
-						name: 'contract_address',
-						value: targetContract.address,
-					}, {
-						name: 'slot',
-						value: state.slot,
-					}, {
-						name: 'type',
-						value: state.type,
-					}, {
-						name: 'variable',
-						value: state.variable,
-					}]);
+					meta.contractAddress = targetContract.address;
+					meta.slot = state.slot;
+					meta.type = state.type;
+					meta.variable = state.variable;
 
 					if (structure.type === 'mapping') {
 						if (structure.value.type === 'simple') {

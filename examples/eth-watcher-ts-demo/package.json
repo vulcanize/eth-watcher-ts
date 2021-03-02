@@ -7,7 +7,7 @@
     "start": "node src/index.js"
   },
   "dependencies": {
-    "@vulcanize/eth-watcher-ts": "^0.0.11",
+    "@vulcanize/eth-watcher-ts": "file:../../vulcanize-eth-watcher-ts-0.0.11.tgz",
     "dotenv": "^6.2.0",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.9"

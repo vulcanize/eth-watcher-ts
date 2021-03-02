@@ -14,8 +14,8 @@ process.on('unhandledRejection', (reason, p) => {
 	const dataService = new DataService();
 
 	await EthWatcherServer({ // DI
-		processState: dataService.processState,
-		processHeader: dataService.processHeader,
-		processEvent: dataService.processEvent,
+		processState: (data) => dataService.processState(data.relatedNode),
+		processHeader: (data) => dataService.processHeader(data),
+		processEvent: (data) => dataService.processEvent(null, data.relatedNode, data.decoded, data.event),
 	})
 })();

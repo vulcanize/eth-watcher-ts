@@ -3,16 +3,12 @@ dotenv.config();
 
 const EthWatcherServer = require("@vulcanize/eth-watcher-ts");
 
-process.on('unhandledRejection', (reason, p) => {
-    console.log('Unhandled Rejection at:', p, 'reason:', reason);
-});
-
 (async () => {
     await EthWatcherServer({ // DI
-        processState: (raw, decoded, meta) => console.log('Test state', raw, decoded, meta),
-        processHeader: (raw) => console.log('Test header', raw),
-        processEvent: (raw, decoded, meta) => console.log('Test event', raw, decoded, meta),
+        processState: (data) => console.log('Test state', data),
+        processHeader: (data) => console.log('Test header', data),
+        processEvent: (data) => console.log('Test event', data),
     }, {
-        
+
     })
 })();
