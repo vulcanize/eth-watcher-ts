@@ -11,7 +11,7 @@
   "scripts": {
     "test": "jest",
     "lint": "npx eslint --max-warnings 0 --ext=ts,tsx .",
-    "build": "npx tsc -p tsconfig.json",
+    "build": "npx tsc",
     "prepublishOnly" : "npm run test && npm run lint",
     "prepare": "npm run build",
     "dev": "npx ts-node ./src/run.ts",
