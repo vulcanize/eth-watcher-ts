@@ -36,6 +36,7 @@
     "express": "^4.17.1",
     "graphql": "^14.7.0",
     "http-status-codes": "^1.4.0",
+    "lodash.kebabcase": "^4.1.1",
     "node-cron": "^2.0.3",
     "node-fetch": "^2.6.1",
     "postgraphile": "^4.9.0",
