@@ -5,10 +5,11 @@ import {
     printSchema,
     buildASTSchema,
     visit,
-    print, TypeNode
+    print, TypeNode, FieldDefinitionNode
 } from 'graphql';
 import {NamedTypeNode, TypeDefinitionNode} from "graphql/language/ast";
 import {TableOptions} from "typeorm/schema-builder/options/TableOptions";
+import {TableColumnOptions} from "typeorm/schema-builder/options/TableColumnOptions";
 const kebabCase = require('lodash.kebabcase');
 
 const TYPES = {
@@ -17,7 +18,8 @@ const TYPES = {
     'Int': 'integer',
     'Float': 'numeric',
     'Boolean': 'boolean',
-    'Bytes': 'bytea'
+    'Bytes': 'bytea',
+    'JSON': 'jsonb',
 }
 
 const sdlSchema1 = `
@@ -320,17 +322,53 @@ type TokenDayData @entity {
 `;
 
 const sdlSchema2 = `
-  type Author {
-    firstName: String
-    lastName: String
-  }
-  type Query {
-    author(id: Int!): Author
-    test: String
-  }
+    type Book {
+      title: String!
+      author: Person!
+      rating: Float
+    }
+    type Person {
+      name: String!
+      age: Int
+    }
 `;
 
 const res = parse(sdlSchema2);
+
+function parseFieldDefinition(node: FieldDefinitionNode | TypeNode): TableColumnOptions {
+    switch (node.kind) {
+        case "FieldDefinition":
+            return Object.assign(parseFieldDefinition(node.type), {
+                name: node.name.value
+            });
+            break;
+        case "NonNullType":
+            return Object.assign(parseFieldDefinition(node.type), {
+                isNullable: false
+            });
+        case "NamedType":
+            const type = TYPES[node.name.value];
+            if (type) {
+                // basic type like int,string,bytes
+                return {
+                    name: null,
+                    type,
+                };
+            }
+
+            return {
+                name: null,
+                type: TYPES['Int'],
+                comment: node.name.value, // table name for foreign key
+            }
+        case "ListType":
+            return Object.assign(parseFieldDefinition(node.type), {
+                isArray: true
+            })
+        default:
+            throw Error('Unsupported type');
+    }
+}
 
 res.definitions.forEach(ast => {
     const tableName = kebabCase((ast as TypeDefinitionNode).name.value);
@@ -345,27 +383,28 @@ res.definitions.forEach(ast => {
                 isGenerated: true,
                 generationStrategy: 'increment'
             },
-        ]
+        ],
     };
 
     visit(ast, {
         FieldDefinition(node) {
-            // TODO: not null
-            // TODO: array
-            // TODO: relations
-
-            const graphqlType = ((node.type as any).type || node.type).name?.value;
-            const pgType = TYPES[graphqlType] || TYPES['ID'];
-            const field = kebabCase(node.name.value);
-
-            tableOptions.columns.push(({
-                name: field,
-                type: pgType,
-            }));
+            const columnOptions: TableColumnOptions = parseFieldDefinition(node);
+            tableOptions.columns.push(columnOptions);
         }
     });
 
+    const foreignKeys = tableOptions.columns
+        .filter((column) => column.comment)
+        .map((column) => ({
+            name: `fk-${column.name}-${kebabCase(column.comment)}-id`,
+            referencedTableName: kebabCase(column.comment),
+            referencedColumnNames: ['id'],
+            columnNames: [column.name],
+        }));
+
+    if (foreignKeys) {
+        tableOptions.foreignKeys = foreignKeys;
+    }
+
     console.log('tableOptions', tableOptions);
 });
-
-
