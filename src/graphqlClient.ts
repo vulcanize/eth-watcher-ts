@@ -26,7 +26,7 @@ export default class GraphqlClient {
 		});
 
 		subscriptionClient.onError((err: ErrorEvent) => {
-			console.log(err);
+			console.log(err.message);
 			if (err?.error?.code === 'ENOTFOUND') {
 				throw err;
 			}

@@ -66,7 +66,7 @@ export default class DataService {
 		}
 	}
 
-	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, headerId: number, data: ABIInputData[], mhKey: string): Promise<void> {
 		if (!data) {
 			return;
 		}
@@ -91,6 +91,10 @@ export default class DataService {
 			}, {
 				name: 'mh_key',
 				value: mhKey,
+				isStrict: true,
+			}, {
+				name: 'header_id',
+				value: headerId,
 				isStrict: true,
 			},
 			...data]);
@@ -175,6 +179,7 @@ VALUES
 		await this.addEvent(
 			e.eventId,
 			target.contractId,
+			header.id,
 			decoded,
 			relatedNode.mhKey,
 		);
@@ -238,7 +243,7 @@ VALUES
 		for (const blockNumber of notSyncedBlocks) {
 			const header = await graphqlService.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
 
-			if (!header) {
+			if (!header || !header?.ethHeaderCidByBlockNumber?.nodes?.length) {
 				console.warn(`No header for ${blockNumber} block`);
 				continue;
 			}
@@ -651,8 +656,18 @@ VALUES
 					}, {
 						name: 'mh_key',
 						type: 'text',
+					}, {
+						name: 'header_id',
+						type: 'integer',
+						isNullable: false,
 					},
-				]
+				],
+				foreignKeys: [{
+					name: tableName,
+					columnNames: ['header_id'],
+					referencedTableName: 'eth.header_cids',
+					referencedColumnNames: ['id'],
+				}],
 			};
 
 			tableOptions.columns.push({
