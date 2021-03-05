@@ -128,12 +128,12 @@ describe('_getTableOptions', function () {
         "name": "mh_key",
         "type": "text",
       }, {
+        "name": "event_id",
+        "type": "integer",
+      }, {
         "name": "header_id",
         "type": "integer",
         isNullable: false,
-      }, {
-        "name": "event_id",
-        "type": "integer",
       }, {
         "isNullable": true,
         "name": "data_message",

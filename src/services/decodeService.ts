@@ -4,6 +4,7 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
 import { toStructure } from './dataTypeParser';
+import Method from "../models/contract/method";
 import {
 	ABI,
 	ABIInputData,
@@ -307,5 +308,70 @@ export default class DecodeService {
 				decoded: array,
 				meta,
 			};
+	}
+
+	public static async decodeGraphCall(relatedNode, contracts: Contract[] | Function, methods: Method[] | Function): Promise<{relatedNode; decoded}>{
+		if (!relatedNode) {
+			return;
+		}
+
+		if (typeof contracts === 'function') {
+			contracts = contracts();
+		}
+
+		if (typeof methods === 'function') {
+			methods = methods();
+		}
+
+		const targetContract = (contracts as Contract[]).find((contract) =>
+			contract.address === relatedNode.dst?.toLowerCase() ||
+			contract.address === relatedNode.src?.toLowerCase()
+		);
+		if (!targetContract) {
+			return;
+		}
+
+		const targetMethods = (methods as Method[]).filter((method) => targetContract.methods.includes(method.methodId));
+		if (!targetContract || !targetMethods || targetMethods.length === 0) {
+			return;
+		}
+
+		for (const m of targetMethods) {
+			const contractAbi = targetContract.abi as ABI;
+			const method = contractAbi.find((a) => a.name === m.name.split('(')[0] );
+
+			if (!method) {
+				continue;
+			}
+
+			const payload = `${method.name}(${method.inputs.map(input => input.type).join(',')})`;
+			const hash = '0x' + keccak256(Buffer.from(payload)).toString('hex');
+			const subHash = hash.substr(2,8);
+
+			let types = [];
+			if (relatedNode.input?.substr(2, 8) === subHash && relatedNode.input?.length > 10) {
+				types = method.inputs.map(input => input.type);
+			} else if (relatedNode.output?.substr(2, 8) === subHash && relatedNode.output?.length > 10) {
+				types = method.outputs.map(input => input.type);
+			} else {
+				continue;
+			}
+
+			const rlpString = relatedNode.input?.substr(11) || relatedNode.output?.substr(11);
+			const decoded = abi.rawDecode(types, Buffer.from(rlpString, 'hex'))
+
+			return {
+				relatedNode,
+				decoded: [{ // TODO: fix for input with many params
+					name: method.name,
+					value: decoded.toString(),
+				}],
+			}
+		}
+
+		return {
+			relatedNode,
+			decoded: null,
+		};
 	}
 }
