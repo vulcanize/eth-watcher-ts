@@ -13,7 +13,7 @@ export default class GraphqlClient {
 		const HTTP_ENDPOINT = `${uri}/graphql`; // https://... or http://...
 
 		const subscriptionClient = new SubscriptionClient(GRAPHQL_ENDPOINT, {
-			reconnect: false,
+			reconnect: true,
 			connectionCallback: (error): void => {
 				error && console.error(error);
 			}
