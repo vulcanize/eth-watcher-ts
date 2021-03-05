@@ -42,6 +42,29 @@ export type EthHeaderCid = {
     timestamp: string;
 }
 
+export type EthStateCid = {
+    id: number;
+    mhKey: string;
+    headerId: number;
+    blockByMhKey: BlockByMhKey;
+    ethHeaderCidByHeaderId: EthHeaderCid;
+    stateLeafKey: string;
+    statePath: string;
+    storageCidsByStateId: {
+        nodes: EthStorageCid[];
+    };
+};
+
+export type EthStorageCid = {
+    id: number;
+    mhKey: string;
+    blockByMhKey: BlockByMhKey;
+    stateId: number;
+    storageLeafKey: string;
+    storagePath: string;
+
+};
+
 export type BlockByMhKey = {
     key: string;
     data: string;

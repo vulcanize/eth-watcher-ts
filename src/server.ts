@@ -2,14 +2,24 @@ import { createServer } from 'http';
 import Store from './store';
 import { createConnection, getConnectionOptions } from 'typeorm';
 import postgraphile from 'postgraphile';
-import * as ws from 'ws';
 import App from './app';
-import env from './env';
+import Config from './config';
 import GraphqlService from './services/graphqlService';
-import DataService from './services/dataService';
 import GraphqlClient from './graphqlClient';
+import {ProcessEventFunction, ProcessHeaderFunction, ProcessStateFunction} from "./types";
+const ws = require('ws'); // eslint-disable-line
 
-(async (): Promise<void> => {
+const server = async function({
+	processEvent,
+	processHeader,
+	processState
+}: {
+	processEvent: ProcessEventFunction;
+	processHeader: ProcessHeaderFunction;
+	processState: ProcessStateFunction;
+}, config?): Promise<void> {
+	const env = Config.getEnv(config);
+
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
 		const app = new App();
@@ -18,13 +28,12 @@ import GraphqlClient from './graphqlClient';
 
 		const graphqlClient = new GraphqlClient(env.GRAPHQL_URI, ws);
 		const graphqlService = new GraphqlService(graphqlClient);
-		const dataService = new DataService();
 
 		if (env.ENABLE_EVENT_WATCHER) {
 			graphqlService.subscriptionReceiptCids( // async
 				() => Store.getStore().getContracts(),
 				() => Store.getStore().getEvents(),
-				(data) => dataService.processEvent(data?.relatedNode, data?.decoded)
+				(data) => processEvent(data)
 			);
 		} else {
 			console.info('Event watcher is not enabled');
@@ -33,7 +42,7 @@ import GraphqlClient from './graphqlClient';
 		if (env.ENABLE_HEADER_WATCHER && env.ENABLE_EVENT_WATCHER) {
 			console.log('Header watcher will work via Event watcher');
 		} else if (env.ENABLE_HEADER_WATCHER && !env.ENABLE_EVENT_WATCHER) {
-			graphqlService.subscriptionHeaderCids((data) => dataService.processHeader(data?.data?.listen?.relatedNode)); // async
+			graphqlService.subscriptionHeaderCids((data) => processHeader(data?.data?.listen?.relatedNode)); // async
 		} else {
 			console.info('Header watcher is not enabled');
 		}
@@ -42,7 +51,7 @@ import GraphqlClient from './graphqlClient';
 			graphqlService.subscriptionStateCids( // async
 				() => Store.getStore().getContracts(),
 				() => Store.getStore().getStates(),
-				(data) => dataService.processState(data?.relatedNode)
+				(data) => processState(data)
 			);
 		} else {
 			console.info('Storage watcher is not enabled');
@@ -78,4 +87,8 @@ import GraphqlClient from './graphqlClient';
 	} else {
 		console.info('Postgraphile server will be not run');
 	}
-})();
+}
+
+export {
+	server as EthWatcherServer
+};

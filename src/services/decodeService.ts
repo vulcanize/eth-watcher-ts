@@ -9,13 +9,13 @@ import {
 	ABIInputData,
 	ContractFunction,
 	DecodeReceiptResult,
+	DecodeStateResult,
 	EventFunction,
 	EthReceiptCid,
-	StateFunction
+	StateFunction,
+	EthStateCid,
 } from "../types";
 import {getContractsFromLogs} from "../utils";
-
-
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -60,6 +60,7 @@ export default class DecodeService {
 			return;
 		}
 
+		const meta = {} as any; // eslint-disable-line
 		for (const e of targetEvents) {
 			const contractAbi = (targetContract.abi as ABI).concat(...targetContract.allAbis);
 			const event = contractAbi.find((a) => a.name === e.name);
@@ -91,6 +92,11 @@ export default class DecodeService {
 					const hashFromBlock = decoded[3][index][1][0].toString('hex');
 					console.log(hashFromBlock);
 
+					meta.event = event.name;
+					meta.blockHash = hashFromBlock;
+					meta.keccak256 = hash;
+					meta.payload = payload;
+
 					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 					const indexedEvents = event.inputs.filter(input => input.indexed);
 
@@ -120,6 +126,7 @@ export default class DecodeService {
 					console.log('array', array);
 
 					return {
+						meta,
 						relatedNode,
 						decoded: array,
 						event
@@ -129,13 +136,14 @@ export default class DecodeService {
 		}
 
 		return {
+			meta,
 			relatedNode,
 			decoded: null,
 			event: null,
 		};
 	}
 
-	public static async decodeStateCid(relatedNode, contracts: Contract[] | ContractFunction, states: State[] | StateFunction): Promise<{relatedNode; decoded}>{
+	public static async decodeStateCid(relatedNode: EthStateCid, contracts: Contract[] | ContractFunction, states: State[] | StateFunction): Promise<DecodeStateResult>{
 			if (!relatedNode || !relatedNode.stateLeafKey || !relatedNode?.storageCidsByStateId?.nodes?.length) {
 				return;
 			}
@@ -155,15 +163,19 @@ export default class DecodeService {
 
 			const targetStates = (states as State[]).filter((state) => targetContract.states.includes(state.stateId));
 
-			console.log(JSON.stringify(relatedNode, null, 2));
-
 			const array: { name: string; value: string | number }[] = [];
+			const meta = {} as any; // eslint-disable-line
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {
 					const structure = toStructure(state.type, state.variable);
 
 					console.log('structure', structure);
+
+					meta.contractAddress = targetContract.address;
+					meta.slot = state.slot;
+					meta.type = state.type;
+					meta.variable = state.variable;
 
 					if (structure.type === 'mapping') {
 						if (structure.value.type === 'simple') {
@@ -293,6 +305,7 @@ export default class DecodeService {
 			return {
 				relatedNode,
 				decoded: array,
+				meta,
 			};
 	}
 }

@@ -1,5 +1,5 @@
+src
 node_modules
-dist
 .env
 ormconfig.json
 config.toml

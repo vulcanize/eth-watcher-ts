@@ -24,7 +24,7 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
-import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthTransactionCid} from "../types";
+import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthStateCid, EthTransactionCid} from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 
 const LIMIT = 1000;
@@ -161,13 +161,17 @@ VALUES
 			return;
 		}
 
-		const target = contract;
+		const target = contract || Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
 		if (!target || !target.events) {
 			return;
 		}
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
 
-		const e = targetEvents.find((e) => e.name === event.name);
+		const e = targetEvents.find((e) => e.name === event?.name);
+		if (!e) {
+			return;
+		}
+
 		await this.addEvent(
 			e.eventId,
 			target.contractId,
@@ -284,7 +288,7 @@ VALUES
 	}
 
 	// TODO: add decoded values
-	public async processState(relatedNode): Promise<StateCids> {
+	public async processState(relatedNode: EthStateCid): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
