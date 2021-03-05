@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
+import {EthReceiptCid, EthStateCid} from "../types";
+
 jest.mock('../store');
 jest.mock('../repositories/data/addressIdSlotIdRepository');
 
@@ -25,11 +27,11 @@ const mockGraphqlService = {
       }],
     },
   }),
-} as any;
+} as any; // eslint-disable-line
 
 const mockDataService = {
   processEvent: () => Promise.resolve(),
-} as any;
+} as any; // eslint-disable-line
 
 const mockContract = {
   contractId: 1,
@@ -126,6 +128,10 @@ describe('_getTableOptions', function () {
         "name": "mh_key",
         "type": "text",
       }, {
+        "name": "header_id",
+        "type": "integer",
+        isNullable: false,
+      }, {
         "name": "event_id",
         "type": "integer",
       }, {
@@ -134,6 +140,12 @@ describe('_getTableOptions', function () {
         "type": "text",
       }],
       "name": "data.contract_id_1_event_id_2",
+      foreignKeys: [{
+        name: "data.contract_id_1_event_id_2",
+        columnNames: ['header_id'],
+        referencedTableName: 'eth.header_cids',
+        referencedColumnNames: ['id'],
+      }],
     });
   });
 });
@@ -148,8 +160,9 @@ describe('_syncEventForContractPage', function () {
     const mockProgressRepository = {
       findSyncedBlocks: jest.fn().mockResolvedValueOnce(
         [2, 3, 4, 5].map(blockNumber => ({ blockNumber }))
-      )
-    } as any;
+      ),
+      add: jest.fn(),
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 9;
@@ -168,8 +181,9 @@ describe('_syncEventForContractPage', function () {
 
   test('without synced blocks', async function () {
     const mockProgressRepository = {
-      findSyncedBlocks: jest.fn().mockResolvedValueOnce([])
-    } as any;
+      findSyncedBlocks: jest.fn().mockResolvedValueOnce([]),
+      add: jest.fn(),
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 9;
@@ -191,7 +205,7 @@ describe('_syncEventForContractPage', function () {
       findSyncedBlocks: jest.fn().mockResolvedValueOnce(
         [0, 1, 2].map((blockNumber) => ({ blockNumber }))
       )
-    } as any;
+    } as any; // eslint-disable-line
 
     const startBlock = 0;
     const maxBlock = 2;
@@ -217,15 +231,15 @@ describe('processState', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processState(undefined, undefined)).toEqual(undefined);
-    expect(await dataService.processState(null, null)).toEqual(undefined);
-    expect(await dataService.processState({}, {})).toEqual(undefined);
+    expect(await dataService.processState(undefined)).toEqual(undefined);
+    expect(await dataService.processState(null)).toEqual(undefined);
+    expect(await dataService.processState({} as unknown as EthStateCid)).toEqual(undefined);
   });
 
   test('no contracts', async function () {
     const stateLeafKey = "emptyStateLeafKey";
 
-    await dataService.processState({ stateLeafKey }, null);
+    await dataService.processState({ stateLeafKey } as unknown as EthStateCid);
 
     expect(mockGetStore).toBeCalledTimes(1);
     expect(mockGetContractByAddressHash).toBeCalledTimes(1);
@@ -234,7 +248,7 @@ describe('processState', function () {
   });
 
   test('check uint', async function () {
-    dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+    dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: string | number): Promise<void> { // eslint-disable-line
       return null
     });
 
@@ -252,9 +266,9 @@ describe('processState', function () {
           },
         }]
       }
-    }
+    } as unknown as EthStateCid;
 
-    const stateCids = await dataService.processState(relatedNode, null); // TODO
+    const stateCids = await dataService.processState(relatedNode); // eslint-disable-line
 
     expect(mockGetStore).toBeCalledTimes(4);
     expect(mockGetContractByAddressHash).toBeCalledTimes(2);
@@ -272,17 +286,17 @@ describe('processEvent', function () {
   });
 
   test('empty args', async function () {
-    expect(await dataService.processEvent(undefined, undefined)).toEqual(undefined);
-    expect(await dataService.processEvent(null, null)).toEqual(undefined);
+    expect(await dataService.processEvent(undefined, undefined, undefined, undefined)).toEqual(undefined);
+    expect(await dataService.processEvent(null,null, null, null)).toEqual(undefined);
   });
 
   test('no logContracts and no target', async function () {
-    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {  // eslint-disable-line
       return {
         id: 0,
       } as HeaderCids;
     });
-    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {
+    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {  // eslint-disable-line
       return null
     });
 
@@ -290,11 +304,11 @@ describe('processEvent', function () {
       ethTransactionCidByTxId: {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       }
-    };
-    const resp1 = await dataService.processEvent(relatedNode1, [{
+    } as unknown as EthReceiptCid;
+    const resp1 = await dataService.processEvent(null, relatedNode1, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], null);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith(relatedNode1.ethTransactionCidByTxId.ethHeaderCidByHeaderId)
@@ -309,29 +323,29 @@ describe('processEvent', function () {
       logContracts: [
         "veryUniqueAddress"
       ]
-    };
-    const resp2 = await dataService.processEvent(relatedNode2, [{
+    } as unknown as EthReceiptCid;
+    const resp2 = await dataService.processEvent(null, relatedNode2, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], null);
     expect(mockGetContracts).toBeCalledTimes(1);
     expect(resp2).toEqual(undefined);
   });
 
   test('check cycle', async function () {
-    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {  // eslint-disable-line
       return {
         id: 0,
       } as HeaderCids;
     });
-    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {
+    dataService.processTransaction = jest.fn().mockImplementation(function (ethTransaction, headerId: number): Promise<TransactionCids> {  // eslint-disable-line
       return null
     });
     dataService.addEvent = jest.fn().mockImplementation(function (): Promise<void> {
       return null
     })
 
-    await dataService.processEvent({
+    await dataService.processEvent(null, {
       ethTransactionCidByTxId: {
         ethHeaderCidByHeaderId: "0xheaderCidByHeaderId",
       },
@@ -344,10 +358,12 @@ describe('processEvent', function () {
       blockByMhKey: {
         data: rlp.encode(["1", "2", "3", [[["1"], ["1"], []]]]).toString("hex"),
       },
-    }, [{
+    }  as unknown as EthReceiptCid, [{
       name: 'MessageChanged',
       value: 'Test'
-    }]);
+    }], {
+      name: 'ename'
+    } as undefined);
 
     expect(dataService.processHeader).toBeCalledTimes(1);
     expect(dataService.processHeader).toBeCalledWith("0xheaderCidByHeaderId")

@@ -1,4 +1,4 @@
-import env from '../env';
+import Config from '../config';
 import DefaultController from "../controllers/defaultController";
 
 export default class Routes {
@@ -9,7 +9,7 @@ export default class Routes {
 
 		app.route('/add')
 			.get((req, res) => {
-				res.render('add.ejs', { api: env.HTTP_PUBLIC_ADDR });
+				res.render('add.ejs', { api: Config.getEnv().HTTP_PUBLIC_ADDR });
 			});
 
 		app.route('/v1/healthz')

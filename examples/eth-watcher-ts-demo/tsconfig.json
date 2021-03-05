@@ -4,23 +4,20 @@
         "emitDecoratorMetadata": true,
         "allowSyntheticDefaultImports": true,
         "module": "commonjs",
+        "moduleResolution": "node",
         "pretty": true,
         "sourceMap": true,
         "skipLibCheck": true,
         "removeComments": true,
-        "target": "es6",
+        "target": "ES2017",
         "outDir": "./dist",
-        "baseUrl": "./src",
-        "declaration": true,
-        "declarationMap": true,
-        "esModuleInterop": true,
+        "baseUrl": "./src"
     },
     "include": [
         "src/**/*.ts",
         "__tests__/**/*.ts",
     ],
     "exclude": [
-        "node_modules",
-        "dist"
+        "node_modules"
     ]
 }

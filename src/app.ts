@@ -1,6 +1,6 @@
 import * as bodyParser from 'body-parser';
-import * as cors from 'cors';
-import * as express from 'express';
+import cors from 'cors';
+import express from 'express';
 
 import { INTERNAL_SERVER_ERROR, NOT_FOUND } from 'http-status-codes';
 import Routes from './routes';

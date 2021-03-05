@@ -5,9 +5,11 @@ export type ABIInput = {
 	internalType: string;
 }
 
-export type ABI = Array<{
+export type ABIElem = {
 	name: string;
 	type: string;
 	inputs: ABIInput[];
 	outputs: ABIInput[];
-}>
+}
+
+export type ABI = Array<ABIElem>

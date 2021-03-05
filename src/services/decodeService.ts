@@ -4,13 +4,19 @@ import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
 import { toStructure } from './dataTypeParser';
-import { ABI } from "../types/abi";
 import Method from "../models/contract/method";
-
-type ABIInputData = {
-	name: string;
-	value?: any; // eslint-disable-line
-}
+import {
+	ABI,
+	ABIInputData,
+	ContractFunction,
+	DecodeReceiptResult,
+	DecodeStateResult,
+	EventFunction,
+	EthReceiptCid,
+	StateFunction,
+	EthStateCid,
+} from "../types";
+import {getContractsFromLogs} from "../utils";
 
 const INDEX = [
 	'0000000000000000000000000000000000000000000000000000000000000000', // 0
@@ -30,7 +36,7 @@ const INDEX = [
 
 export default class DecodeService {
 
-	public static async decodeReceiptCid(relatedNode, contracts: Contract[] | Function, events: Event[] | Function): Promise<{relatedNode; decoded}>{
+	public static async decodeReceiptCid(relatedNode: EthReceiptCid, contracts: Contract[] | ContractFunction, events: Event[] | EventFunction): Promise<DecodeReceiptResult> {
 		if (!relatedNode || !relatedNode.logContracts || !relatedNode.logContracts.length) {
 			return;
 		}
@@ -43,18 +49,21 @@ export default class DecodeService {
 			events = events();
 		}
 
-		const targetContract = (contracts as Contract[]).find((contract) => contract.address === relatedNode.logContracts[0]);
-		if (!targetContract) {
+		const targetContracts = getContractsFromLogs(contracts, relatedNode.logContracts);
+		if (!targetContracts.length) {
 			return;
 		}
+		// @TODO process all contracts
+		const targetContract = targetContracts[0];
 
 		const targetEvents = (events as Event[]).filter((event) => targetContract.events.includes(event.eventId));
 		if (!targetContract || !targetEvents || targetEvents.length === 0) {
 			return;
 		}
 
+		const meta = {} as any; // eslint-disable-line
 		for (const e of targetEvents) {
-			const contractAbi = targetContract.abi as ABI;
+			const contractAbi = (targetContract.abi as ABI).concat(...targetContract.allAbis);
 			const event = contractAbi.find((a) => a.name === e.name);
 
 			if (!event) {
@@ -71,7 +80,7 @@ export default class DecodeService {
 				const index = (relatedNode.topic0S as Array<string>).findIndex((topic) => topic === hash);
 
 				if (relatedNode.blockByMhKey && relatedNode.blockByMhKey.data) {
-					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x',''), 'hex');
+					const buffer = Buffer.from(relatedNode.blockByMhKey.data.replace('\\x', ''), 'hex');
 					const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
 					// console.log(decoded[0].toString('hex'));
@@ -84,28 +93,33 @@ export default class DecodeService {
 					const hashFromBlock = decoded[3][index][1][0].toString('hex');
 					console.log(hashFromBlock);
 
+					meta.event = event.name;
+					meta.blockHash = hashFromBlock;
+					meta.keccak256 = hash;
+					meta.payload = payload;
+
 					const notIndexedEvents = event.inputs.filter(input => !input.indexed);
 					const indexedEvents = event.inputs.filter(input => input.indexed);
 
 					const messages = abi.rawDecode(notIndexedEvents.map(input => input.internalType), decoded[3][index][2]);
 
 					const array: ABIInputData[] = [];
-					indexedEvents.forEach((event, index) => {
-						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x','');
+					indexedEvents.forEach((input, index) => {
+						const topic = relatedNode[`topic${index + 1}S`][0].replace('0x', '');
 
 						try {
 							array.push({
-								name: event.name,
-								value: abi.rawDecode([ event.internalType ], Buffer.from(topic, 'hex'))[0],
+								name: input.name,
+								value: abi.rawDecode([input.internalType], Buffer.from(topic, 'hex'))[0],
 							});
 						} catch (e) {
-							console.log('Error wtih', event.name, event.internalType, e.message);
+							console.log('Error abi decode', input.name, input.internalType, e.message);
 						}
 					});
-			
-					notIndexedEvents.forEach((event, index) => {
+
+					notIndexedEvents.forEach((input, index) => {
 						array.push({
-							name: event.name,
+							name: input.name,
 							value: messages[index],
 						});
 					});
@@ -113,20 +127,24 @@ export default class DecodeService {
 					console.log('array', array);
 
 					return {
+						meta,
 						relatedNode,
 						decoded: array,
+						event
 					};
 				}
 			}
 		}
 
 		return {
+			meta,
 			relatedNode,
 			decoded: null,
+			event: null,
 		};
 	}
 
-	public static async decodeStateCid(relatedNode, contracts: Contract[] | Function, states: State[] | Function): Promise<{relatedNode; decoded}>{
+	public static async decodeStateCid(relatedNode: EthStateCid, contracts: Contract[] | ContractFunction, states: State[] | StateFunction): Promise<DecodeStateResult>{
 			if (!relatedNode || !relatedNode.stateLeafKey || !relatedNode?.storageCidsByStateId?.nodes?.length) {
 				return;
 			}
@@ -146,15 +164,19 @@ export default class DecodeService {
 
 			const targetStates = (states as State[]).filter((state) => targetContract.states.includes(state.stateId));
 
-			console.log(JSON.stringify(relatedNode, null, 2));
-
-			const array: { name: string; value: any }[] = [];
+			const array: { name: string; value: string | number }[] = [];
+			const meta = {} as any; // eslint-disable-line
 
 			if (relatedNode?.storageCidsByStateId?.nodes?.length) {
 				for (const state of targetStates) {
 					const structure = toStructure(state.type, state.variable);
 
 					console.log('structure', structure);
+
+					meta.contractAddress = targetContract.address;
+					meta.slot = state.slot;
+					meta.type = state.type;
+					meta.variable = state.variable;
 
 					if (structure.type === 'mapping') {
 						if (structure.value.type === 'simple') {
@@ -284,6 +306,7 @@ export default class DecodeService {
 			return {
 				relatedNode,
 				decoded: array,
+				meta,
 			};
 	}
 

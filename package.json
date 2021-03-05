@@ -1,22 +1,37 @@
 {
-  "name": "contract-watcher-js",
-  "version": "0.0.1",
+  "name": "@vulcanize/eth-watcher-ts",
+  "version": "0.0.11",
+  "type": "commonjs",
+  "types": "./dist",
+  "main": "./dist/server.js",
+  "files": [
+    "dist/"
+  ],
   "description": "Contract watcher on TypeScript",
   "scripts": {
     "test": "jest",
-    "lint": "npx eslint --ext=ts,tsx .",
+    "lint": "npx eslint --max-warnings 0 --ext=ts,tsx .",
     "build": "npx tsc",
-    "dev": "npx ts-node ./src/server.ts",
-    "start": "NODE_ENV=production npx node ./dist/server.js",
-    "sync": "TS_NODE_FILES=true TS_NODE_TRANSPILE_ONLY=true npx ts-node ./src/syncDaemon.ts",
+    "prepublishOnly": "npm run test && npm run lint",
+    "prepare": "npm run build",
+    "dev": "npx ts-node ./src/run.ts",
+    "start": "NODE_ENV=production npx node ./dist/run.js",
+    "sync": "npx ts-node ./src/syncDaemon.ts",
     "prod": "npm run build && npm run start",
     "migrate:up": "npx ts-node ./node_modules/typeorm/cli.js migration:run",
     "//": "downgrade last migration",
     "migrate:down": "npx ts-node ./node_modules/typeorm/cli.js migration:revert",
     "build-browser-lib": "npx webpack",
     "static-serve": "npx serve public -p 3000",
-    "cli": "npx ts-node ./cli/getAbi.ts",
+    "getAbi": "npx ts-node dev/getAbi.ts",
     "backfill": "npx ts-node ./src/backfillService.ts"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vulcanize/eth-watcher-ts.git"
   },
   "dependencies": {
     "@apollo/client": "^3.2.0",

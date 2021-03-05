@@ -11,12 +11,21 @@ import EventRepository from '../repositories/contract/eventRepository';
 import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
 import AddressRepository from '../repositories/data/addressRepository';
-import { ABI } from "../types/abi";
+import { ABI } from "../types";
 import { structureToSignatureType } from './dataTypeParser';
 import ApplicationError from "../errors/applicationError";
 
 const childProcess = require('child_process'); // eslint-disable-line
 const parser = require('@solidity-parser/parser'); // eslint-disable-line
+
+type ContractParam = {
+	address: string;
+	startingBlock: number;
+	name: string;
+	abi?: ABI;
+	sourceCode: string;
+	compilerVersion: string;
+}
 
 export default class ContractService {
 
@@ -55,7 +64,8 @@ export default class ContractService {
 		return addressRepository.findAll();
 	}
 
-	public async addContracts (apiKey: string, contracts: any[]): Promise<{ success; fail }> {
+
+	public async addContracts (apiKey: string, contracts: ContractParam[]): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
 		const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
@@ -111,7 +121,7 @@ export default class ContractService {
 			} catch (e) {
 				console.log(e);
 				fail.push(contractObj.address);
-			} 
+			}
 		}
 
 		if (contractIds && contractIds.length) {
@@ -124,19 +134,19 @@ export default class ContractService {
 		}
 	}
 
-	private async runBackfillService(contractIds: number[]): Promise<any> {
+	private async runBackfillService(contractIds: number[]): Promise<number> {
 		// VUL-202 Run backfill service for specific contractIds
 		return new Promise((resolve, reject) => {
 			const workerProcess = childProcess.spawn('npx', ['ts-node', './src/backfillService.ts', ...contractIds]);
-			
+
 			workerProcess.stdout.on('data', function (data) {
 				console.log('stdout: ' + data);
 			});
-			
+
 			workerProcess.stderr.on('data', function (data) {
 				console.log('stderr: ' + data);
 			});
-			
+
 			workerProcess.on('close', function (code) {
 				if (code === 0) {
 					resolve(code);
@@ -157,12 +167,12 @@ export default class ContractService {
 		for (const contractDefinition of contractDefinitions) {
 			const states = contractDefinition?.subNodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
 			const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
-			
+
 			list = list.concat(states?.map((item, slot) => {
 				const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
 				return {
 					slot,
-					type, 
+					type,
 					variable: item.variables[0]?.name,
 				}
 			}));

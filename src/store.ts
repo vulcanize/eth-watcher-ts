@@ -5,7 +5,7 @@ import State from "./models/contract/state";
 import Address from "./models/data/address";
 import ContractService from "./services/contractService";
 import DataService from "./services/dataService";
-import env from './env';
+import Config from './config';
 
 export default class Store {
 	private static store: Store;
@@ -37,13 +37,13 @@ export default class Store {
 
 		return Store.store;
 	}
-	
+
 	public static init(autoUpdate = true): void {
 		const store = this.getStore();
 
 		store.syncData();
 		if (autoUpdate) {
-			setInterval(store.syncData, env.CONFIG_RELOAD_INTERVAL);
+			setInterval(store.syncData, Config.getEnv().CONFIG_RELOAD_INTERVAL);
 		}
 	}
 
@@ -136,11 +136,11 @@ export default class Store {
 		await Store.store.dataService?.createTables(Store.store.contracts);
 		await Store.store.dataService?.prepareAddresses(Store.store.contracts);
 
-		console.log(`Contracts: \t${Store.store.contracts?.length}`);
-		console.log(`Events: \t${Store.store.events?.length}`);
-		console.log(`Methods: \t${Store.store.methods?.length}`);
-		console.log(`States: \t${Store.store.states?.length}`);
-		console.log(`Addresses: \t${Store.store.addresses?.length}`);
+		// console.log(`Contracts: \t${Store.store.contracts?.length}`);
+		// console.log(`Events: \t${Store.store.events?.length}`);
+		// console.log(`Methods: \t${Store.store.methods?.length}`);
+		// console.log(`States: \t${Store.store.states?.length}`);
+		// console.log(`Addresses: \t${Store.store.addresses?.length}`);
 	}
 
 }

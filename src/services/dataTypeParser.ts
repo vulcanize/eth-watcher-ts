@@ -66,7 +66,7 @@ function getPgType(abiType: string): string {
   return pgType;
 }
 
-function parseStructure(name: string, typeName: TypeName, structs: StructDefinition[], level: number = 0): Structure {
+function parseStructure(name: string, typeName: TypeName, structs: StructDefinition[], level = 0): Structure {
   switch (typeName.type) {
     case 'ElementaryTypeName':
       return { name, type: 'simple', kind: typeName.name } as SimpleStructure;
@@ -96,7 +96,7 @@ function parseStructure(name: string, typeName: TypeName, structs: StructDefinit
   }
 }
 
-export function structureToSignatureType(name: string, typeName: TypeName, structs: StructDefinition[], level = 0, isArray = false): {signature: string; type: string; hasStruct: boolean;} {
+export function structureToSignatureType(name: string, typeName: TypeName, structs: StructDefinition[], level = 0, isArray = false): {signature: string; type: string; hasStruct: boolean} {
   let structsDef = '';
   if (level === 0 && structs && structs.length) {
     for (const struct of structs) {
@@ -183,7 +183,7 @@ export function toStructure(vars: string, name: string): Structure {
 export function toFields(obj: Structure): Field[] {
   const stack: Structure[] = [obj];
   const fields: Field[] = [];
-  let level: number = 0;
+  let level = 0;
   while (stack.length > 0) {
     const obj = stack.pop();
     switch (obj.type) {

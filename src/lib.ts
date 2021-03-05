@@ -3,7 +3,7 @@ import GraphqlClient from "./graphqlClient";
 import Contract from "./models/contract/contract";
 import State from "./models/contract/state";
 import Event from "./models/contract/event";
-import { ABI } from "./types/abi";
+import { ABI } from "./types";
 
 type ContractConfig = {
 	address: string;
@@ -20,15 +20,15 @@ class ContractWatcher  {
         this.graphqlService = new GraphqlService(graphqlClient);
     }
 
-    public async ethHeaderCidById(block: number): Promise<any> {
+    public async ethHeaderCidById(block: number): Promise<unknown> {
         return this.graphqlService.ethHeaderCidById(block);
     }
 
-    public async subscriptionHeaderCids(func: (value: any) => void): Promise<void> {
+    public async subscriptionHeaderCids(func: (value) => void): Promise<void> {
         return this.graphqlService.subscriptionHeaderCids(func);
     }
 
-    public async subscriptionReceiptCids(contractConfigs: ContractConfig[], func: (value: any) => void): Promise<void> {
+    public async subscriptionReceiptCids(contractConfigs: ContractConfig[], func: (value) => void): Promise<void> {
         const contracts: Contract[] = [];
         const events: Event[] = [];
         let eventId = 1;
@@ -52,7 +52,7 @@ class ContractWatcher  {
         return this.graphqlService.subscriptionReceiptCids(contracts, events, func);
     }
 
-    public async subscriptionStateCids(contractConfigs: ContractConfig[], func: (value: any) => void): Promise<void> {
+    public async subscriptionStateCids(contractConfigs: ContractConfig[], func: (value) => void): Promise<void> {
         const contracts: Contract[] = [];
         const states: State[] = [];
         let stateId = 1;
@@ -76,7 +76,7 @@ class ContractWatcher  {
         }
         return this.graphqlService.subscriptionStateCids(contracts, states, func);
     }
-    
+
 }
 
 

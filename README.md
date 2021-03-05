@@ -32,7 +32,7 @@ docker run -p 127.0.0.1:5000:5000 -e PG_HOST=pg-host -e PG_PORT=5432 -e PG_DATAB
 ```
 (if you are running postgresql on localhost you need to get local ip address and set it as `PG_HOST` value)
 
-## Run contract-watcher-js
+## Run @vulcanize/eth-watcher-ts
 
 ```
 cp config.example.toml config.toml

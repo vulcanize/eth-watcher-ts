@@ -24,7 +24,7 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
-import { ABI, ABIInput } from "../types/abi";
+import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthStateCid, EthTransactionCid} from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 import Method from "../models/contract/method";
 import MethodProgressRepository from "../repositories/data/methodProgressRepository";
@@ -86,7 +86,7 @@ export default class DataService {
 		}
 	}
 
-	public async addEvent (eventId: number, contractId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
+	public async addEvent (eventId: number, contractId: number, headerId: number, data: ABIInputData[], mhKey: string, blockNumber: number): Promise<void> {
 		if (!data) {
 			return;
 		}
@@ -113,14 +113,17 @@ export default class DataService {
 				name: 'mh_key',
 				value: mhKey,
 				isStrict: true,
+			}, {
+				name: 'header_id',
+				value: headerId,
+				isStrict: true,
 			},
-			data]);
+			...data]);
 			await progressRepository.add(contractId, eventId, blockNumber);
 		});
 	}
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public async addState (contractId: number, mhKey: string, state: State, value: any, blockNumber: number): Promise<void> {
+	public async addState (contractId: number, mhKey: string, state: State, value: string | number, blockNumber: number): Promise<void> {
 		const tableName = DataService._getTableName({
 			contractId,
 			type: 'state',
@@ -138,7 +141,7 @@ VALUES
 			const [err] = await to(entityManager.queryRunner.query(sql));
 			if (err) {
 				// TODO: throw err
-				console.log(err);	
+				console.log(err);
 			}
 
 			const stateProgressRepository: StateProgressRepository = entityManager.getCustomRepository(StateProgressRepository);
@@ -189,7 +192,7 @@ VALUES
 		return pgType;
 	}
 
-	public async processEvent(relatedNode, decoded = []): Promise<void> {
+	public async processEvent(contract: Contract, relatedNode: EthReceiptCid, decoded: ABIInputData[], event: ABIElem): Promise<void> {
 		if (!relatedNode || !decoded) {
 			return;
 		}
@@ -202,30 +205,27 @@ VALUES
 			return;
 		}
 
-		const target = Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
+		const target = contract || Store.getStore().getContracts().find((contract) => contract.address === relatedNode.logContracts[0]);
 		if (!target || !target.events) {
 			return;
 		}
-
-		const contractAbi = target.abi as ABI;
 		const targetEvents: Event[] = Store.getStore().getEventsByContractId(target.contractId);
-		for (const d of decoded) {
-			const event = contractAbi.find((a) => a.inputs.map((i) => i.name).includes(d.name));
-			if (!event) {
-				continue;
-			}
 
-			const e = targetEvents.find((e) => e.name === event.name);
-			await this.addEvent(
-				e.eventId,
-				target.contractId,
-				d,
-				relatedNode.mhKey,
-				relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
-			);
-
-			console.log('Event saved');
+		const e = targetEvents.find((e) => e.name === event?.name);
+		if (!e) {
+			return;
 		}
+
+		await this.addEvent(
+			e.eventId,
+			target.contractId,
+			header.id,
+			decoded,
+			relatedNode.mhKey,
+			relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+		);
+
+		console.log(`Event ${event.name} saved`);
 	}
 
 	public static async syncEventForContract({
@@ -284,7 +284,7 @@ VALUES
 		for (const blockNumber of notSyncedBlocks) {
 			const header = await graphqlService.ethHeaderCidWithTransactionByBlockNumber(blockNumber);
 
-			if (!header) {
+			if (!header || !header?.ethHeaderCidByBlockNumber?.nodes?.length) {
 				console.warn(`No header for ${blockNumber} block`);
 				continue;
 			}
@@ -296,15 +296,17 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getEvents(),
 					);
-					await dataService.processEvent(result?.relatedNode, result?.decoded);
+					await dataService.processEvent(contract, result?.relatedNode, result?.decoded, result?.event);
 				}
 			}
+
+			await progressRepository.add(contract.contractId, event.eventId, blockNumber);
 		}
 
 		return notSyncedBlocks;
 	}
 
-	public async processTransaction(ethTransaction, headerId: number): Promise<TransactionCids> {
+	public async processTransaction(ethTransaction: EthTransactionCid, headerId: number): Promise<TransactionCids> {
 		if (!ethTransaction) {
 			return;
 		}
@@ -317,7 +319,7 @@ VALUES
 		});
 	}
 
-	public async processHeader(relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {
+	public async processHeader(relatedNode: EthHeaderCid): Promise<HeaderCids> {
 
 		if (!relatedNode) {
 			return;
@@ -331,7 +333,8 @@ VALUES
 		});
 	}
 
-	public async processState(relatedNode, todo): Promise<StateCids> {
+	// TODO: add decoded values
+	public async processState(relatedNode: EthStateCid): Promise<StateCids> {
 
 		if (!relatedNode || !relatedNode.stateLeafKey) {
 			return;
@@ -358,7 +361,7 @@ VALUES
 				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());					
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
 
 					if (structure.value.type === 'simple') {
@@ -580,6 +583,8 @@ VALUES
 					await dataService.processState(result.relatedNode, result.decoded);
 				}
 			}
+
+			await stateProgressRepository.add(contract.contractId, state.stateId, blockNumber);
 		}
 
 		return notSyncedBlocks;
@@ -805,7 +810,7 @@ VALUES
 						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
 						if (!isExist) {
 							const hash = DataService._getKeyForMapping(adr.address, state.slot);
-							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);	
+							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);
 						}
 					}
 				}
@@ -863,7 +868,18 @@ VALUES
 			}, {
 				name: 'event_id',
 				type: 'integer',
-			}]);
+			}, {
+				name: 'header_id',
+				type: 'integer',
+				isNullable: false,
+			},]);
+
+			tableOptions.foreignKeys = [{
+				name: tableName,
+				columnNames: ['header_id'],
+				referencedTableName: 'eth.header_cids',
+				referencedColumnNames: ['id'],
+			}];
 
 			const data: ABIInput[] = (contract.abi as ABI)?.find((e) => e.name === event.name)?.inputs;
 			data.forEach((line) => {

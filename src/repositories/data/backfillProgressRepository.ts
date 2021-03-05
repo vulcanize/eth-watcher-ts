@@ -25,7 +25,7 @@ export default class BackfillProgressRepository extends Repository<BackfillProgr
 		});
 	}
 
-	public async updateProgress(contractId: number, current: number): Promise<any> {
+	public async updateProgress(contractId: number, current: number): Promise<unknown> {
 		return this.update({
 			contractId
 		}, {
