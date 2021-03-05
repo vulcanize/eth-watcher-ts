@@ -128,6 +128,10 @@ describe('_getTableOptions', function () {
         "name": "mh_key",
         "type": "text",
       }, {
+        "name": "header_id",
+        "type": "integer",
+        isNullable: false,
+      }, {
         "name": "event_id",
         "type": "integer",
       }, {
@@ -136,6 +140,12 @@ describe('_getTableOptions', function () {
         "type": "text",
       }],
       "name": "data.contract_id_1_event_id_2",
+      foreignKeys: [{
+        name: "data.contract_id_1_event_id_2",
+        columnNames: ['header_id'],
+        referencedTableName: 'eth.header_cids',
+        referencedColumnNames: ['id'],
+      }],
     });
   });
 });

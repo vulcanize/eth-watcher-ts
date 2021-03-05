@@ -13,7 +13,7 @@ export default class GraphqlClient {
 		const HTTP_ENDPOINT = `${uri}/graphql`; // https://... or http://...
 
 		const subscriptionClient = new SubscriptionClient(GRAPHQL_ENDPOINT, {
-			reconnect: true,
+			reconnect: false,
 			connectionCallback: (error): void => {
 				error && console.error(error);
 			}
@@ -26,7 +26,7 @@ export default class GraphqlClient {
 		});
 
 		subscriptionClient.onError((err: ErrorEvent) => {
-			console.log(err);
+			console.log(err.message);
 			if (err?.error?.code === 'ENOTFOUND') {
 				throw err;
 			}
