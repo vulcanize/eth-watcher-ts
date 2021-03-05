@@ -29,7 +29,9 @@ import BackfillProgressRepository from '../repositories/data/backfillProgressRep
 import Method from "../models/contract/method";
 import MethodProgressRepository from "../repositories/data/methodProgressRepository";
 import MethodRepository from '../repositories/data/methodRepository';
-import env from "../env";
+import Config from '../config';
+
+const env = Config.getEnv();
 
 const LIMIT = 1000;
 
@@ -222,7 +224,7 @@ VALUES
 			header.id,
 			decoded,
 			relatedNode.mhKey,
-			relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber
+			Number(relatedNode.ethTransactionCidByTxId.ethHeaderCidByHeaderId.blockNumber)
 		);
 
 		console.log(`Event ${event.name} saved`);
@@ -504,7 +506,8 @@ VALUES
 					console.log(decoded[0].toString('hex'));
 					console.log(value);
 
-					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, relatedNode.ethHeaderCidByHeaderId.blockNumber);
+					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value,
+						Number(relatedNode.ethHeaderCidByHeaderId.blockNumber));
 				}
 			}
 		}
@@ -580,7 +583,7 @@ VALUES
 						() => Store.getStore().getContracts(),
 						() => Store.getStore().getStates(),
 					);
-					await dataService.processState(result.relatedNode, result.decoded);
+					await dataService.processState(result.relatedNode);
 				}
 			}
 
