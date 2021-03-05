@@ -1,4 +1,4 @@
-FROM node:10.15.2-alpine
+FROM node:15.11.0-alpine3.10
 
 # Create app directory
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN npm config set unsafe-perm true && npm install -g typescript ts-node
 
 COPY package*.json ./
 
-RUN npm install
+RUN npm install --ignore-scripts
 
 COPY . .
 
