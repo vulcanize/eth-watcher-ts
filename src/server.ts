@@ -73,6 +73,8 @@ const server = async function({
 				[
 					'contract',
 					'data',
+					'eth',
+					'public',
 				],
 				{
 					watchPg: true,
