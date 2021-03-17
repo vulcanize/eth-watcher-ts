@@ -74,12 +74,12 @@ const server = async function({
 					'contract',
 					'data',
 					'eth',
-					'public',
 				],
 				{
 					watchPg: true,
 					graphiql: true,
 					enhanceGraphiql: true,
+					enableCors: true,
 				}
 			)
 		)

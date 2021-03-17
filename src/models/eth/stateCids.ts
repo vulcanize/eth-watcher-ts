@@ -11,6 +11,7 @@ import {
 import StateAccounts from "./stateAccounts";
 import HeaderCids from "./headerCids";
 import StorageCids from "./storageCids";
+import Block from "./block";
 
 @Index("state_cids_header_id_state_path_key", ["headerId", "statePath"], {
 	unique: true,
@@ -36,6 +37,10 @@ export default class StateCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("bytea", { name: "state_path", nullable: true, unique: true })
 	statePath: Buffer | null;

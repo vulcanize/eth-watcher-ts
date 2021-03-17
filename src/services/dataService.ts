@@ -26,6 +26,7 @@ import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
 import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthStateCid, EthTransactionCid} from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
+import BlockRepository from "../repositories/eth/blockRepository";
 
 const LIMIT = 1000;
 
@@ -286,6 +287,9 @@ VALUES
 
 		return getConnection().transaction(async (entityManager) => {
 			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+
+			const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data);
 			const header = await headerCidsRepository.add(relatedNode);
 
 			return header;

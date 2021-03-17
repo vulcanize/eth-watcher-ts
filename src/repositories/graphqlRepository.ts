@@ -146,6 +146,9 @@ export default class GraphqlRepository {
 					td
 					blockHash
 					blockNumber
+					blockByMhKey {
+						data
+					}
 					bloom
 					cid
 					mhKey
@@ -234,6 +237,9 @@ export default class GraphqlRepository {
 						td
 						blockHash
 						blockNumber
+						blockByMhKey {
+							data
+						}
 						bloom
 						cid
 						mhKey

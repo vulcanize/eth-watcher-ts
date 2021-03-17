@@ -3,10 +3,11 @@ import {
 	Entity,
 	Index,
 	JoinColumn,
-	ManyToOne,
+	ManyToOne, OneToOne,
 	PrimaryGeneratedColumn,
 } from "typeorm";
 import StateCids from "./stateCids";
+import Block from "./block";
 
 @Index("storage_cids_pkey", ["id"], { unique: true })
 @Index("storage_cids_state_id_storage_path_key", ["stateId", "storagePath"], {
@@ -32,6 +33,10 @@ export default class StorageCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("bytea", { name: "storage_path", nullable: true, unique: true })
 	storagePath: Buffer | null;

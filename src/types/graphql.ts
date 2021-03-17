@@ -31,6 +31,7 @@ export type EthHeaderCid = {
     blockHash: string;
     parentHash: string;
     blockNumber: string;
+    blockByMhKey: BlockByMhKey;
     bloom: Buffer;
     mhKey: string;
     reward: string;

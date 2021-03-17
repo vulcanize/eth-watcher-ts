@@ -3,10 +3,11 @@ import {
 	Entity,
 	Index,
 	JoinColumn,
-	ManyToOne,
+	ManyToOne, OneToOne,
 	PrimaryGeneratedColumn,
 } from "typeorm";
 import HeaderCids from "./headerCids";
+import Block from "./block";
 
 @Index("uncle_cids_header_id_block_hash_key", ["blockHash", "headerId"], {
 	unique: true,
@@ -31,6 +32,10 @@ export default class UncleCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("numeric", { name: "reward" })
 	reward: string;

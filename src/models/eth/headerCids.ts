@@ -1,13 +1,14 @@
 import {
 	Column,
 	Entity,
-	Index,
-	OneToMany,
+	Index, JoinColumn,
+	OneToMany, OneToOne,
 	PrimaryGeneratedColumn, Unique,
 } from "typeorm";
 import StateCids from "./stateCids";
 import TransactionCids from "./transactionCids";
 import UncleCids from "./uncleCids";
+import Block from "./block";
 
 @Index(
 	"header_cids_block_number_block_hash_key",
@@ -35,6 +36,10 @@ export default class HeaderCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("numeric", { name: "td" })
 	td: string;

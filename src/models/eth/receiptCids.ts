@@ -7,6 +7,7 @@ import {
 	PrimaryGeneratedColumn,
 } from "typeorm";
 import TransactionCids from "./transactionCids";
+import Block from "./block";
 
 @Index("receipt_cids_pkey", ["id"], { unique: true })
 @Index("receipt_cids_tx_id_key", ["txId"], { unique: true })
@@ -23,6 +24,10 @@ export default class ReceiptCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("character varying", { name: "contract", nullable: true, length: 66 })
 	contract: string | null;

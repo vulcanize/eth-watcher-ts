@@ -9,6 +9,7 @@ import {
 } from "typeorm";
 import ReceiptCids from "./receiptCids";
 import HeaderCids from "./headerCids";
+import Block from "./block";
 
 @Index("transaction_cids_header_id_tx_hash_key", ["headerId", "txHash"], {
 	unique: true,
@@ -33,6 +34,10 @@ export default class TransactionCids {
 
 	@Column("text", { name: "mh_key" })
 	mhKey: string;
+
+	@OneToOne(() => Block, (block) => block.key)
+	@JoinColumn([{ name: "mh_key", referencedColumnName: "key" }])
+	block: Block;
 
 	@Column("character varying", { name: "dst", length: 66 })
 	dst: string;
