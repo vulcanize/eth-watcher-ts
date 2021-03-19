@@ -15,7 +15,7 @@
 
 ## Getting Started
 
-* Run geth-statediff with `--statediff` and `--rpcapi "web3,eth,net,debug,personal,statediff"` options , e.g. 
+* Run geth-statediff with `--statediff` and `--rpcapi "web3,eth,net,debug,personal,statediff"` options , e.g.
 ```
 ./geth-statediff --testnet --rpc --rpcapi "web3,eth,net,debug,personal,statediff" --rpccorsdomain '*' --rpcaddr="0.0.0.0" --rpcport="8545" --syncmode=full --statediff --ws --wsaddr="0.0.0.0"
 ```
@@ -60,6 +60,14 @@ INSERT INTO contract.contracts (name, address, abi, events, methods, starting_bl
 ```
 
 Then generate some events in Smart Contract and it will be populated to `data` schema in database.
+
+### Using the CLI
+
+To add a contract to the watcher database, run the `add-contract` command:
+
+```bash
+$ npx ts-node src/cli/add-contract.ts --name Test --address 0x1ca7c995f8eF0A2989BbcE08D5B7Efe50A584aa1 --source-path ./Test.sol --artifact-path ./Test.json
+```
 
 ## In browser
 
