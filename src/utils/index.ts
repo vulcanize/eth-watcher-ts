@@ -20,6 +20,7 @@ export const decodeHeaderData = (data: string) => { // eslint-disable-line
         parentHash: decoded[0].toString('hex'),
         receiptHash: decoded[5].toString('hex'),
         address: decoded[2].toString('hex'),
+        miner: decoded[2].toString('hex'),
         root: decoded[3].toString('hex'),
         bloom: decoded[6].toString('hex'),
         extra: decoded[12].toString('hex'),
@@ -33,14 +34,14 @@ export const decodeTransactionData = (data: string) => { // eslint-disable-line
     const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
     return {
-        accountNonce: decoded[0].toString('hex'),
-        price: decoded[1].toString('hex'),
-        gasLimit: decoded[2].toString('hex'),
-        to: decoded[3].toString('hex'),
-        amount: decoded[4].toString('hex'),
-        payload: decoded[5].toString('hex'),
-        v: decoded[6].toString('hex'),
-        r: decoded[7].toString('hex'),
-        s: decoded[8].toString('hex'),
+        nonce: decoded[0].toString('hex'),
+        gasPrice: decoded[1].toString('hex'),
+        gas: decoded[2].toString('hex'),
+        value: decoded[3].toString('hex'),
+        input: decoded[4].toString('hex'),
+        v: decoded[5].toString('hex'),
+        r: decoded[6].toString('hex'),
+        s: decoded[7].toString('hex'),
+        to: decoded[8].toString('hex'),
     }
 }

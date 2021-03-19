@@ -1,7 +1,8 @@
 import { createServer } from 'http';
 import Store from './store';
 import { createConnection, getConnectionOptions } from 'typeorm';
-import postgraphile from 'postgraphile';
+import { postgraphile, makePluginHook } from 'postgraphile';
+const { default: PgPubsub } = require("@graphile/pg-pubsub"); // eslint-disable-line
 import App from './app';
 import Config from './config';
 import GraphqlService from './services/graphqlService';
@@ -67,6 +68,8 @@ const server = async function({
 	}).catch((error) => console.log('Error: ', error));
 
 	if (env.GRAPHQL_SERVER_ENABLE) {
+		const pluginHook = makePluginHook([PgPubsub]);
+
 		createServer(
 			postgraphile(
 				`postgres://${env.DATABASE_USER}:${env.DATABASE_PASSWORD}@${env.DATABASE_HOSTNAME}:${env.DATABASE_PORT}/${env.DATABASE_NAME}`,
@@ -74,13 +77,17 @@ const server = async function({
 					'contract',
 					'data',
 					'eth',
+					'public',
 				],
 				{
 					watchPg: true,
 					graphiql: true,
 					enhanceGraphiql: true,
 					enableCors: true,
-				}
+					subscriptions: true,
+					simpleSubscriptions: true,
+					pluginHook,
+				} as any
 			)
 		)
 		.listen(env.GRAPHQL_SERVER_PORT, env.GRAPHQL_SERVER_ADDR, () =>

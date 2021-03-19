@@ -289,7 +289,7 @@ VALUES
 			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
 			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
 
-			const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data);
+			const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
 			const header = await headerCidsRepository.add(relatedNode);
 
 			return header;
