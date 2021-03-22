@@ -259,6 +259,15 @@ describe('toTableOptions', function () {
           "name": "id",
           "type": "integer",
         }, {
+          name: 'state_id',
+          type: 'integer',
+        }, {
+          name: 'contract_id',
+          type: 'integer',
+        }, {
+          name: 'mh_key',
+          type: 'text',
+        }, {
           "isNullable": true,
           "name": "name",
           "type": "text",
@@ -279,6 +288,15 @@ describe('toTableOptions', function () {
           "isPrimary": true,
           "name": "id",
           "type": "integer",
+        }, {
+          name: 'state_id',
+          type: 'integer',
+        }, {
+          name: 'contract_id',
+          type: 'integer',
+        }, {
+          name: 'mh_key',
+          type: 'text',
         }, {
           "isNullable": true,
           "name": "decimals",
@@ -358,7 +376,16 @@ describe('toTableOptions', function () {
           "isNullable": false,
           "name": "balances_id",
           "type": "integer",
-        },{
+        }, {
+          name: 'state_id',
+          type: 'integer',
+        }, {
+          name: 'contract_id',
+          type: 'integer',
+        }, {
+          name: 'mh_key',
+          type: 'text',
+        }, {
           "isNullable": true,
           "name": "value0",
           "type": "numeric",
@@ -373,7 +400,7 @@ describe('toTableOptions', function () {
     // 200  0xbde
 
     // Table 2
-    // id   table1.id   address 
+    // id   table1.id   address
     // 1000 100         0x123
     // 2000 100         0x567
 
@@ -446,7 +473,16 @@ describe('toTableOptions', function () {
           "name": "value0_id",
           "type": "integer",
           "isNullable": false
-        },{
+        }, {
+          name: 'state_id',
+          type: 'integer',
+        }, {
+          name: 'contract_id',
+          type: 'integer',
+        }, {
+          name: 'mh_key',
+          type: 'text',
+        }, {
           "isNullable": true,
           "name": "value1",
           "type": "numeric",

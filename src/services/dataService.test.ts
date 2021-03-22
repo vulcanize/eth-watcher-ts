@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
-import {EthReceiptCid, EthStateCid} from "../types";
+import {EthHeaderCid, EthReceiptCid, EthStateCid} from "../types";
 
 jest.mock('../store');
 jest.mock('../repositories/data/addressIdSlotIdRepository');
@@ -248,6 +248,12 @@ describe('processState', function () {
   });
 
   test('check uint', async function () {
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: EthHeaderCid): Promise<HeaderCids> {  // eslint-disable-line
+      return {
+        id: 0,
+      } as HeaderCids;
+    });
+
     dataService.addState = jest.fn().mockImplementation(function (contractId: number, mhKey: string, state: State, value: string | number): Promise<void> { // eslint-disable-line
       return null
     });
@@ -291,7 +297,7 @@ describe('processEvent', function () {
   });
 
   test('no logContracts and no target', async function () {
-    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: { td; blockHash; blockNumber; bloom; cid; mhKey; nodeId; ethNodeId; parentHash; receiptRoot; uncleRoot; stateRoot; txRoot; reward; timesValidated; timestamp }): Promise<HeaderCids> {  // eslint-disable-line
+    dataService.processHeader = jest.fn().mockImplementation(async function (relatedNode: EthHeaderCid): Promise<HeaderCids> {  // eslint-disable-line
       return {
         id: 0,
       } as HeaderCids;

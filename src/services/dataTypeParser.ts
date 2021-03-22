@@ -228,18 +228,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
             isPrimary: true,
             isGenerated: true,
             generationStrategy: 'increment'
-          },
-          {
-            name: 'state_id',
-            type: 'integer',
-          },
-          {
-            name: 'contract_id',
-            type: 'integer',
-          }, {
-            name: 'mh_key',
-            type: 'text',
-          },
+          }
         ]
       };
 
@@ -252,11 +241,22 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
       }
 
       if (obj.type === 'simple') {
-        tableOptions.columns.push({
+        tableOptions.columns.push(...[
+          {
+            name: 'state_id',
+            type: 'integer',
+          },
+          {
+            name: 'contract_id',
+            type: 'integer',
+          }, {
+            name: 'mh_key',
+            type: 'text',
+          }, {
           name: obj.name,
           type: getPgType(obj.kind),
           isNullable: true,
-        });
+        }]);
 
         return [tableOptions];
       }
