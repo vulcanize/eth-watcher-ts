@@ -229,6 +229,17 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
             isGenerated: true,
             generationStrategy: 'increment'
           },
+          {
+            name: 'state_id',
+            type: 'integer',
+          },
+          {
+            name: 'contract_id',
+            type: 'integer',
+          }, {
+            name: 'mh_key',
+            type: 'text',
+          },
         ]
       };
 
@@ -246,10 +257,10 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           type: getPgType(obj.kind),
           isNullable: true,
         });
-        
+
         return [tableOptions];
       }
-      
+
       if (obj.type === 'mapping') {
         tableOptions.columns.push({
           name: obj.name,
@@ -259,7 +270,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
 
         return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.value, `${obj.name}_id`)];
       }
-      
+
       if (obj.type === 'array') {
         if (obj.kind.type === 'simple') {
           tableOptions.columns.push({
@@ -276,7 +287,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.kind, `${obj.name}_id`)];
         }
       }
-      
+
       if (obj.type === 'struct') {
         for(const field of obj.fields) {
           if (field.type === 'simple') {

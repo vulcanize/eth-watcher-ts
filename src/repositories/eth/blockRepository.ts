@@ -14,6 +14,7 @@ export default class BlockRepository extends Repository<Block> {
 			})
 			.returning("*")
 			// eslint-disable-next-line @typescript-eslint/camelcase
+			.orUpdate({conflict_target: ["key"], overwrite: ["key", "data"]})
 			.execute();
 
 		return this.create(result.generatedMaps[0] as DeepPartial<Block>)

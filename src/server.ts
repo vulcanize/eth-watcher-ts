@@ -8,6 +8,7 @@ import Config from './config';
 import GraphqlService from './services/graphqlService';
 import GraphqlClient from './graphqlClient';
 import {ProcessEventFunction, ProcessHeaderFunction, ProcessStateFunction} from "./types";
+import {PostGraphileOptions} from "postgraphile/build/interfaces";
 const ws = require('ws'); // eslint-disable-line
 
 const server = async function({
@@ -87,7 +88,7 @@ const server = async function({
 					subscriptions: true,
 					simpleSubscriptions: true,
 					pluginHook,
-				} as any
+				} as PostGraphileOptions
 			)
 		)
 		.listen(env.GRAPHQL_SERVER_PORT, env.GRAPHQL_SERVER_ADDR, () =>
