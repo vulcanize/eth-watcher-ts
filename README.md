@@ -2,7 +2,7 @@
 
 ## Requirements
 
-* [NodeJS](https://nodejs.org/en/)
+* [NodeJS](https://nodejs.org/en/) (v15.11.0)
 * Postgresql
 * [geth-statediff](https://github.com/vulcanize/go-ethereum/releases/tag/v1.9.11-statediff-0.0.8)
 * [ipld-eth-indexer](https://github.com/vulcanize/ipld-eth-indexer)
