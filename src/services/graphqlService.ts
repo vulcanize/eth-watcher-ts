@@ -47,6 +47,7 @@ export default class GraphqlService {
 	public async subscriptionStateCids(contracts: Contract[] | ContractFunction, states: State[] | StateFunction, func: (value: DecodeStateResult) => void): Promise<void> {
 		return this.graphqlRepository.subscriptionStateCids(async (data) => {
 			const relatedNode = data?.data?.listen?.relatedNode;
+			console.log(`State id: ${relatedNode.id}`)
 			const result: DecodeStateResult = await DecodeService.decodeStateCid(relatedNode, contracts, states);
 			return func(result);
 		}, (error) => {console.log(error)});

@@ -3,28 +3,28 @@ version: '3.2'
 services:
   dapptools:
     restart: unless-stopped
-    image: vulcanize/dapptools:v0.29.0-statediff-0.0.2
+    image: vulcanize/dapptools:v0.29.0-statediff-0.0.6
+    environment:
+      DB_USER: vdbm
+      DB_NAME: indexer
+      DB_HOST: indexer-db
+      DB_PORT: 5432
+      DB_PASSWORD: password
     ports:
       - "127.0.0.1:8545:8545"
-      - "127.0.0.1:8546:8546"
+#      - "127.0.0.1:8546:8546"
 
-  eth-indexer:
-    restart: unless-stopped
+  migrations:
+    restart: on-failure
     depends_on:
       - indexer-db
-      - dapptools
-    image: vulcanize/ipld-eth-indexer:v0.3.0-alpha
+    image: vulcanize/statediff-migrations:v0.3.0
     environment:
-      DATABASE_NAME: vulcanize_public
+      DATABASE_USER: vdbm
+      DATABASE_NAME: indexer
       DATABASE_HOSTNAME: indexer-db
       DATABASE_PORT: 5432
-      DATABASE_USER: vdbm
       DATABASE_PASSWORD: password
-      ETH_WS_PATH: "dapptools:8546"
-      ETH_HTTP_PATH: "dapptools:8545"
-      ETH_CHAIN_ID: 4
-      ETH_NETWORK_ID: 4
-      VDB_COMMAND: sync
 
   indexer-db:
     restart: unless-stopped
@@ -46,14 +46,14 @@ services:
     environment:
       - PG_HOST=indexer-db
       - PG_PORT=5432
-      - PG_DATABASE=vulcanize_public
+      - PG_DATABASE=indexer
       - PG_USER=vdbm
       - PG_PASSWORD=password
       - SCHEMA=public,eth
     ports:
       - "127.0.0.1:5000:5000"
 
-  contact-watcher-db:
+  watcher-db:
     restart: unless-stopped
     image: postgres:10.12-alpine
     environment:

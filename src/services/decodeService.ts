@@ -1,5 +1,5 @@
 import * as abi from 'ethereumjs-abi';
-import { keccak256, keccakFromHexString, rlp } from 'ethereumjs-util';
+import {keccak256, keccakFromHexString, rlp, toAscii} from 'ethereumjs-util';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
 import State from '../models/contract/state';
@@ -170,7 +170,7 @@ export default class DecodeService {
 				for (const state of targetStates) {
 					const structure = toStructure(state.type, state.variable);
 
-					console.log('structure', structure);
+					//console.log('structure', structure);
 
 					meta.contractAddress = targetContract.address;
 					meta.slot = state.slot;
@@ -282,7 +282,7 @@ export default class DecodeService {
 						console.log('storageLeafKey', storageLeafKey);
 
 						const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
-						console.log('storage', storage);
+						//console.log('storage', storage);
 						if (!storage) {
 							continue;
 						}
@@ -290,9 +290,16 @@ export default class DecodeService {
 						const buffer = Buffer.from(storage.blockByMhKey.data.replace('\\x',''), 'hex');
 						console.log(buffer);
 						const decoded: any = rlp.decode(buffer); // eslint-disable-line
-						console.log(decoded);
-						const value = abi.rawDecode([ structure.kind ], rlp.decode(Buffer.from(decoded[1], 'hex')))[0];
-						console.log(value);
+						// at 0 index we have storage leaf key
+						const storageData = decoded[1];
+						const storageDataDecoded = rlp.decode(storageData);
+
+						let value;
+						if (structure.kind === 'string') {
+							value = toAscii(storageDataDecoded.toString('hex'));
+						} else {
+							value = abi.rawDecode([ structure.kind ], storageDataDecoded)[0];
+						}
 
 						array.push({
 							name: structure.name,
