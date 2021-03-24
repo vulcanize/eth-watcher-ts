@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/ban-ts-ignore */
-import {EthHeaderCid, EthReceiptCid, EthStateCid} from "../types";
+import {EthHeaderCid, EthReceiptCid, EthStateCid, EthStorageCid} from "../types";
 
 jest.mock('../store');
 jest.mock('../repositories/data/addressIdSlotIdRepository');
@@ -410,4 +410,84 @@ describe('processEvent', function () {
     // @ts-ignore
     expect(DataService._getKeyForMapping(address, 0)).toEqual('0x4d7121c6ebdd9e653e74262fbd95e6b2c834fced8b79a244c406adc41aad8ae4');
   });
+});
+
+describe('deriveStringFromStorage', () => {
+  const service = new DataService();
+
+  test('short string', () => {
+    const slot = 0;
+    const storages: EthStorageCid[] = [{
+      storageLeafKey: "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+      storagePath: "",
+      mhKey: "",
+      blockByMhKey: {
+        key: "",
+        data: "\\xf844a120290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563a1a0616263313233000000000000000000000000000000000000000000000000000c"
+      }
+    }];
+
+    const result = service.deriveStringFromStorage(slot, storages);
+    expect(result).toEqual({result: "abc123", success: true});
+  })
+
+  test('long string', () => {
+    const slot = 0;
+    const storages: EthStorageCid[] = [{
+        storageLeafKey: "",
+        mhKey: "/blocks/DMQADUIIBXGM6PCGGTTQT6YMVNUVHBFDCVUZNK6FDPGZTGZVTG4TYJQ",
+        storagePath: "\\x",
+        blockByMhKey: {
+          key: "",
+          data: "\\xf8718080a0eef3d7a9c57f28da03023925875b8e5a960aaae2b8b7a283e9428a75143d17068080a0b49e17cb9c975bd758ea930fb8eba4e2910c65aaf4ade4ffacc889b676b5684aa03502665532412bb45b52d695c7a9bb3058f6386e0d7023dec7ac7ee36f310ad080808080808080808080"
+        }
+      },
+      {
+        storageLeafKey: "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+        mhKey: "/blocks/DMQO546XVHCX6KG2AMBDSJMHLOHFVFQKVLRLRN5CQPUUFCTVCQ6ROBQ",
+        storagePath: "\\x02",
+        blockByMhKey: {
+          key: "",
+          data: "\\xe2a0390decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e56345"
+        }
+      },
+      {
+        storageLeafKey: "0x510e4e770828ddbf7f7b00ab00a9f6adaf81c0dc9cc85f1f8249c256942d61d9",
+        mhKey: "/blocks/DMQLJHQXZOOJOW6XLDVJGD5Y5OSOFEIMMWVPJLPE76WMRCNWO22WQSQ",
+        storagePath: "\\x05",
+        blockByMhKey: {
+          key: "",
+          data: "\\xf843a0310e4e770828ddbf7f7b00ab00a9f6adaf81c0dc9cc85f1f8249c256942d61d9a1a06162633239336466676b626b62313233676162637a3132333435363738393061"
+        }
+      },
+      {
+        storageLeafKey: "0x6c13d8c1c5df666ea9ca2a428504a3776c8ca01021c3a1524ca7d765f600979a",
+        mhKey: "/blocks/DMQDKATGKUZECK5ULNJNNFOHVG5TAWHWHBXA24BD33D2Y7XDN4YQVUA",
+        storagePath: "\\x06",
+        blockByMhKey: {
+          key: "",
+          data: "\\xf843a03c13d8c1c5df666ea9ca2a428504a3776c8ca01021c3a1524ca7d765f600979aa1a06263000000000000000000000000000000000000000000000000000000000000"
+        }
+      }
+    ];
+
+    const result = service.deriveStringFromStorage(slot, storages);
+    expect(result).toEqual({result: "abc293dfgkbkb123gabcz1234567890abc", success: true});
+  })
+
+  test('empty string', () => {
+    const slot = 0;
+    const storages: EthStorageCid[] = [{
+      storageLeafKey: "0x290decd9548b62a8d60345a988386fc84ba6bc95484008f6362f93160ef3e563",
+      storagePath: "\\x",
+      mhKey: "/blocks/DMQMLUSGAGDPOIZ4SJ7H3MW4Y4B4BZIAWZJ4VARHHN57VWAELWC2I4A",
+      blockByMhKey: {
+        data: "\\x",
+        key: "/blocks/DMQMLUSGAGDPOIZ4SJ7H3MW4Y4B4BZIAWZJ4VARHHN57VWAELWC2I4A"
+      }
+    }];
+
+    const result = service.deriveStringFromStorage(slot, storages);
+    expect(result).toEqual({result: "", success: true});
+  })
 });

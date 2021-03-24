@@ -1,12 +1,40 @@
-import { rlp } from 'ethereumjs-util';
+import {rlp, BN} from 'ethereumjs-util';
 import Contract from "../models/contract/contract";
+import {EthStorageCid} from "../types";
 
 export const getContractsFromLogs = (contracts: Contract[], logs: string[]): Contract[] => {
     return contracts.filter((contract) => logs.map((log) => log.toLowerCase()).includes(contract.address.toLowerCase()));
 }
 
+export const increaseHexByOne = (value: string): string => {
+    value = value.replace('0x','');
+    const x = new BN(value, 'hex');
+    const sum = x.addn(1);
+    let key = sum.toString(16);
+    if (value.length > key.length) {
+        key = new Array(value.length - key.length + 1).join('0') + key;
+    }
+
+    return '0x' + key;
+}
+
+// Convert MultiHash Block data to buffer
+export const mhDataToBuffer = (data: string): Buffer => {
+    return Buffer.from(data.replace('\\x',''), 'hex');
+}
+
+export const decodeStorageCid = (storage: EthStorageCid): Buffer => {
+    const buffer = mhDataToBuffer(storage.blockByMhKey.data);
+    // array[0] = storage leaf key
+    // array[1] = decoded value
+    const decodedData = rlp.decode(buffer);
+    const decodedValue = rlp.decode(decodedData[1]);
+
+    return decodedValue as Buffer;
+}
+
 export const decodeHeaderData = (data: string) => { // eslint-disable-line
-    const buffer = Buffer.from(data.replace('\\x',''), 'hex');
+    const buffer = mhDataToBuffer(data);
     const decoded: any = rlp.decode(buffer); // eslint-disable-line
 
     return {

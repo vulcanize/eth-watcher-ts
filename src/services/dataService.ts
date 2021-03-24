@@ -3,7 +3,7 @@ import to from 'await-to-js';
 import { getConnection, Table } from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import {keccak256, keccakFromHexString, rlp, BN, toAscii} from 'ethereumjs-util';
+import {keccak256, keccakFromHexString, rlp, BN, toAscii, toUtf8} from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -24,9 +24,19 @@ import { toStructure, toTableOptions } from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
-import {ABI, ABIElem, ABIInput, EthHeaderCid, EthReceiptCid, EthStateCid, EthTransactionCid} from "../types";
+import {
+	ABI,
+	ABIElem,
+	ABIInput,
+	EthHeaderCid,
+	EthReceiptCid,
+	EthStateCid,
+	EthStorageCid,
+	EthTransactionCid
+} from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 import BlockRepository from "../repositories/eth/blockRepository";
+import {decodeStorageCid, increaseHexByOne} from "../utils";
 
 const LIMIT = 1000;
 
@@ -478,10 +488,13 @@ VALUES
 					const storageDataDecoded = rlp.decode(storageData);
 
 					let value;
-					// @TODO handle string greater than 31 byte
 					if (structure.kind === 'string') {
-						const len = parseInt(storageDataDecoded.toString('hex', storageData.length-2), 16);
-						value = toAscii(storageDataDecoded.toString('hex', 0, len / 2));
+						const result = this.deriveStringFromStorage(state.slot, relatedNode?.storageCidsByStateId?.nodes);
+						if (!result.success) {
+							continue;
+						}
+
+						value = result.result;
 					} else {
 						value = abi.rawDecode([ structure.kind ], storageDataDecoded)[0];
 					}
@@ -492,6 +505,77 @@ VALUES
 					await this.addState(contract.contractId, storage.blockByMhKey.key, state, value, structure.name);
 				}
 			}
+		}
+	}
+
+	public deriveStringFromStorage(slot: number, storages: EthStorageCid[]): {result: string; success: boolean} {
+		// calculate keccak hash
+		const storageLeafKey = DataService._getKeyForFixedType(slot);
+		const storage = storages.find((s) => s.storageLeafKey === storageLeafKey);
+		if (!storage) {
+			return {
+				result: "",
+				success: false
+			};
+		}
+
+		const data = decodeStorageCid(storage);
+		const dataHex = data.toString('hex');
+		// 32 bytes
+		if (dataHex.length == 64) {
+			/*
+			 	data length is 31 bytes or less
+			 	lowest-order byte stores length * 2
+			 	example:
+			 	61 62 63 31 32 33 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0c
+			 	^  ^  ^  ^  ^  ^                                                                             ^
+			 	hex encoded string                                                                        length * 2
+			 */
+
+			const len = parseInt(data.toString('hex', dataHex.length/2 - 2), 16);
+			const value = toAscii(data.toString('hex', 0, len / 2));
+
+			return {
+				result: value,
+				success: true,
+			}
+		} else {
+			/*
+			 result data string length more than 31 bytes. At address keccak(slot) stored `length * 2 + 1`
+			 data itself stored at multiple addresses:
+			 	* keccak(keccak(slot))
+			 	* keccak(keccak(slot)+1)
+			 	* keccak(keccak(slot)+2)
+			 	* etc
+
+			 */
+			let len = parseInt(dataHex, 16);
+			len -= 1;
+			len /= 2;
+
+			let result = '';
+			let nextAddress = storageLeafKey;
+
+			for (let i = 0; i < len/32; i++) {
+				const hash = '0x' + keccakFromHexString(nextAddress).toString('hex');
+				const storage = storages.find((s) => s.storageLeafKey === hash);
+				if (!storage) {
+					return {
+						result: "",
+						success: false
+					};
+				}
+
+				const data = decodeStorageCid(storage);
+				result += toUtf8(data.toString('hex'));
+
+				nextAddress = increaseHexByOne(nextAddress);
+			}
+
+			return {
+				result,
+				success: true
+			};
 		}
 	}
 

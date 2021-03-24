@@ -285,8 +285,6 @@ export default class GraphqlRepository {
 								storageLeafKey
 								storagePath
 								mhKey
-								id
-								stateId
 								blockByMhKey {
 									data
 									key

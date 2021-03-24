@@ -44,7 +44,6 @@ export type EthHeaderCid = {
 }
 
 export type EthStateCid = {
-    id: number;
     mhKey: string;
     headerId: number;
     blockByMhKey: BlockByMhKey;
@@ -57,10 +56,8 @@ export type EthStateCid = {
 };
 
 export type EthStorageCid = {
-    id: number;
     mhKey: string;
     blockByMhKey: BlockByMhKey;
-    stateId: number;
     storageLeafKey: string;
     storagePath: string;
 
