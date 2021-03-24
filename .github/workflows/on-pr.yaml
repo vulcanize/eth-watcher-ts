@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run test
       - run: npm run lint
+      - run: npm run build
 
   build:
     name: Run docker build

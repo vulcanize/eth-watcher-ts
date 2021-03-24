@@ -3,7 +3,23 @@ on:
   release:
     types: [published]
 jobs:
-  push_to_registries:
+  npm_publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Use Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 15
+      - run: npm ci
+      - run: npm run test
+      - run: npm run lint
+      - uses: JS-DevTools/npm-publish@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          registry: https://npm.pkg.github.com/
+
+  docker_publish:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:

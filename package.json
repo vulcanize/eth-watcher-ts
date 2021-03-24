@@ -1,6 +1,6 @@
 {
   "name": "@vulcanize/eth-watcher-ts",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "type": "commonjs",
   "types": "./dist",
   "main": "./dist/server.js",
