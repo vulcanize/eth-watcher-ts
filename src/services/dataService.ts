@@ -295,15 +295,25 @@ VALUES
 			return;
 		}
 
-		return getConnection().transaction(async (entityManager) => {
-			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
-			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+		let result;
+		let errz;
+		try {
+			[errz, result] = await to(getConnection().transaction(async (entityManager) => {
+				const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
+				const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
 
-			const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
-			const header = await headerCidsRepository.add(relatedNode);
+				const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
+				const header = await headerCidsRepository.add(relatedNode);
 
-			return header;
-		});
+				return header;
+			}));//.catch(errz => console.log('processHeader tx error', errz));
+			console.log(errz, result);
+
+		} catch (e) {
+			console.log('processHeader tx error', e)
+		}
+
+		return result;
 	}
 
 	// TODO: add decoded values
@@ -313,11 +323,15 @@ VALUES
 			return;
 		}
 
-		console.log(JSON.stringify(relatedNode, null, 2));
+		//console.log(JSON.stringify(relatedNode, null, 2));
 
+		console.log('before updating header');
 		await this.processHeader(relatedNode?.ethHeaderCidByHeaderId);
+		console.log('after updating header');
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
+		console.log('after getting contracts', contract && relatedNode?.storageCidsByStateId?.nodes?.length);
+
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -325,7 +339,7 @@ VALUES
 			for (const state of states) {
 				const structure = toStructure(state.type, state.variable);
 
-				console.log('structure', structure);
+				//console.log('structure', structure);
 
 				const tableName = DataService._getTableName({
 					contractId: contract.contractId,
@@ -333,7 +347,7 @@ VALUES
 					id: state.stateId,
 				});
 				const tableOptions = toTableOptions(tableName, structure)
-				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
+				//console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
 					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
@@ -345,6 +359,7 @@ VALUES
 							// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
 
 							if (!storage.storageLeafKey) {
+								console.log('storage mapping. skip storage without leaf key');
 								continue;
 							}
 
@@ -361,17 +376,25 @@ VALUES
 								value = abi.rawDecode([ structure.value.kind ], storageDataDecoded)[0];
 							}
 
-							console.log(decoded);
-							console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+							// console.log(decoded);
+							// console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+							//
+							// console.log(decoded[0].toString('hex'));
+							// console.log(value);
 
-							console.log(decoded[0].toString('hex'));
-							console.log(value);
+							console.log('saving state', structure.value.name, value);
 
 							const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
 							await slotRepository.add(tableOptions[1].name, [
+								'state_id',
+								'contract_id',
+								'mh_key',
 								`${structure.name}_id`,
 								structure.value.name,
 							], [
+								state.stateId,
+								contract.contractId,
+								storage.blockByMhKey.key,
 								id,
 								value,
 							]);
@@ -409,7 +432,7 @@ VALUES
 						for (const field of structure.value.fields) {
 							if (field.type === 'simple') {
 								const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === hashes[index]);
-								console.log('storageLeafKey', hashes[index]);
+								// console.log('storageLeafKey', hashes[index]);
 								index++;
 
 								if (!storage) {
@@ -447,7 +470,7 @@ VALUES
 					for (const field of structure.fields) {
 						if (field.type === 'simple') {
 							const storageLeafKey = DataService._getKeyForFixedType(index);
-							console.log('storageLeafKey', storageLeafKey);
+							// console.log('storageLeafKey', storageLeafKey);
 							index++;
 
 							const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -473,10 +496,9 @@ VALUES
 					await slotRepository.add(tableOptions[0].name, data.map((d) => d.name), data.map((d) => d.value));
 				} else if (structure.type === 'simple') {
 					const storageLeafKey = DataService._getKeyForFixedType(state.slot);
-					console.log('storageLeafKey', storageLeafKey);
+					// console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
-					console.log('storage', storage);
 					if (!storage) {
 						continue;
 					}

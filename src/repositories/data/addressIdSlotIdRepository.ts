@@ -14,7 +14,7 @@ export default class AddressIdSlotIdRepository {
 		const table = await this.queryRunner.getTable(tableName);
 
 		if (table) {
-			console.log(`Table ${tableName} already exists`);
+			// console.log(`Table ${tableName} already exists`);
 			return;
 		}
 

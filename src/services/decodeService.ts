@@ -279,7 +279,7 @@ export default class DecodeService {
 						}
 					} else if (structure.type === 'simple') {
 						const storageLeafKey = '0x' + keccak256(Buffer.from(INDEX[state.slot], 'hex')).toString('hex');
-						console.log('storageLeafKey', storageLeafKey);
+						// console.log('storageLeafKey', storageLeafKey);
 
 						const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
 						//console.log('storage', storage);
