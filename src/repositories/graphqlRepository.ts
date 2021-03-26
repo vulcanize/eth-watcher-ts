@@ -199,6 +199,10 @@ export default class GraphqlRepository {
 							src
 							txData
 							txHash
+							blockByMhKey {
+							  data
+							  key
+							}
 							ethHeaderCidByHeaderId {
 								id
 								td

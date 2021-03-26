@@ -283,6 +283,9 @@ VALUES
 
 		return getConnection().transaction(async (entityManager) => {
 			const transactionCidsRepository: TransactionCidsRepository = entityManager.getCustomRepository(TransactionCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+
+			await blockRepository.add(ethTransaction.mhKey, ethTransaction.blockByMhKey.data); // eslint-disable-line
 			const transaction = await transactionCidsRepository.add(headerId, ethTransaction);
 
 			return transaction;
@@ -299,7 +302,7 @@ VALUES
 			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
 			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
 
-			const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
+			await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
 			const header = await headerCidsRepository.add(relatedNode);
 
 			return header;
