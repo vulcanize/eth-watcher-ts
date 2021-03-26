@@ -830,7 +830,7 @@ VALUES
 				CREATE TRIGGER ai
 					after INSERT ON ${tableNameWithSchema}
 					for each row
-					execute procedure graphql_subscription('events', '${tableName}', 'id');
+					execute procedure graphql_subscription('events', '${tableName}S', 'id');
 			`)
 			console.log('create new table', tableNameWithSchema);
 		});
