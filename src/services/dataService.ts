@@ -739,7 +739,7 @@ VALUES
 		}
 	}
 
-	private static _getTableName({ contractId, type = 'event', id}, withSchema: boolean = true): string {
+	private static _getTableName({ contractId, type = 'event', id}, withSchema = true): string {
 		let tableName = `contract_id_${contractId}_${type}_id_${id}`;
 		if (withSchema) {
 			tableName = `data.${tableName}`;
