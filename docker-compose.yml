@@ -60,6 +60,7 @@ services:
       POSTGRES_USER: "vdbm"
       POSTGRES_DB: "vulcanize_public"
       POSTGRES_PASSWORD: "password"
+    command: ["postgres", "-c", "log_statement=all", "-N", "500"]
     volumes:
      - contract_watcher_js_db_data:/var/lib/postgresql/data
     ports:
