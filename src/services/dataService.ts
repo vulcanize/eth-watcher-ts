@@ -739,8 +739,13 @@ VALUES
 		}
 	}
 
-	private static _getTableName({ contractId, type = 'event', id}): string {
-		return `data.contract_id_${contractId}_${type}_id_${id}`;
+	private static _getTableName({ contractId, type = 'event', id}, withSchema: boolean = true): string {
+		let tableName = `contract_id_${contractId}_${type}_id_${id}`;
+		if (withSchema) {
+			tableName = `data.${tableName}`;
+		}
+
+		return tableName;
 	}
 
 	private static _getTableOptions(contract: Contract, { event }: { event?: Event }): TableOptions {
@@ -802,12 +807,17 @@ VALUES
 
 	private async _createEventTable(contract: Contract, event: Event): Promise<void> {
 		return getConnection().transaction(async (entityManager) => {
-			const tableName = DataService._getTableName({
+			const tableNameWithSchema = DataService._getTableName({
 				contractId: contract.contractId,
 				type: 'event',
 				id: event.eventId
 			});
-			const table = await entityManager.queryRunner.getTable(tableName);
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId
+			}, false);
+			const table = await entityManager.queryRunner.getTable(tableNameWithSchema);
 
 			if (table) {
 				//console.log(`Table ${tableName} already exists`);
@@ -816,7 +826,13 @@ VALUES
 
 			const tableOptions = DataService._getTableOptions(contract, { event });
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
-			console.log('create new table', tableName);
+			await entityManager.queryRunner.query(`
+				CREATE TRIGGER ai
+					after INSERT ON ${tableNameWithSchema}
+					for each row
+					execute procedure graphql_subscription('events', '${tableName}', 'id');
+			`)
+			console.log('create new table', tableNameWithSchema);
 		});
 	}
 
