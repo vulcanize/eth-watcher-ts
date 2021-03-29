@@ -23,6 +23,7 @@ export type EthTransactionCid = {
     txData: Buffer;
     txHash: string;
     ethHeaderCidByHeaderId: EthHeaderCid;
+    blockByMhKey: BlockByMhKey;
 };
 
 export type EthHeaderCid = {

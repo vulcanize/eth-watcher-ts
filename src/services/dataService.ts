@@ -283,6 +283,9 @@ VALUES
 
 		return getConnection().transaction(async (entityManager) => {
 			const transactionCidsRepository: TransactionCidsRepository = entityManager.getCustomRepository(TransactionCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+
+			await blockRepository.add(ethTransaction.mhKey, ethTransaction.blockByMhKey.data); // eslint-disable-line
 			const transaction = await transactionCidsRepository.add(headerId, ethTransaction);
 
 			return transaction;
@@ -295,25 +298,15 @@ VALUES
 			return;
 		}
 
-		let result;
-		let errz;
-		try {
-			[errz, result] = await to(getConnection().transaction(async (entityManager) => {
-				const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
-				const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+		return getConnection().transaction(async (entityManager) => {
+			const headerCidsRepository: HeaderCidsRepository = entityManager.getCustomRepository(HeaderCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
 
-				const newBlock = await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
-				const header = await headerCidsRepository.add(relatedNode);
+			await blockRepository.add(relatedNode.mhKey, relatedNode.blockByMhKey.data); // eslint-disable-line
+			const header = await headerCidsRepository.add(relatedNode);
 
-				return header;
-			}));//.catch(errz => console.log('processHeader tx error', errz));
-			console.log(errz, result);
-
-		} catch (e) {
-			console.log('processHeader tx error', e)
-		}
-
-		return result;
+			return header;
+		});
 	}
 
 	// TODO: add decoded values
@@ -330,8 +323,6 @@ VALUES
 		console.log('after updating header');
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
-		console.log('after getting contracts', contract && relatedNode?.storageCidsByStateId?.nodes?.length);
-
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
 			const contractAddress = Store.getStore().getAddress(contract.address);
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
@@ -758,8 +749,13 @@ VALUES
 		}
 	}
 
-	private static _getTableName({ contractId, type = 'event', id}): string {
-		return `data.contract_id_${contractId}_${type}_id_${id}`;
+	private static _getTableName({ contractId, type = 'event', id}, withSchema = true): string {
+		let tableName = `contract_id_${contractId}_${type}_id_${id}`;
+		if (withSchema) {
+			tableName = `data.${tableName}`;
+		}
+
+		return tableName;
 	}
 
 	private static _getTableOptions(contract: Contract, { event }: { event?: Event }): TableOptions {
@@ -821,12 +817,22 @@ VALUES
 
 	private async _createEventTable(contract: Contract, event: Event): Promise<void> {
 		return getConnection().transaction(async (entityManager) => {
-			const tableName = DataService._getTableName({
+			const tableNameWithSchema = DataService._getTableName({
 				contractId: contract.contractId,
 				type: 'event',
 				id: event.eventId
 			});
-			const table = await entityManager.queryRunner.getTable(tableName);
+			const tableNameWithSchema = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId
+			});
+			const tableName = DataService._getTableName({
+				contractId: contract.contractId,
+				type: 'event',
+				id: event.eventId
+			}, false);
+			const table = await entityManager.queryRunner.getTable(tableNameWithSchema);
 
 			if (table) {
 				//console.log(`Table ${tableName} already exists`);
@@ -835,7 +841,13 @@ VALUES
 
 			const tableOptions = DataService._getTableOptions(contract, { event });
 			await entityManager.queryRunner.createTable(new Table(tableOptions), true);
-			console.log('create new table', tableName);
+			await entityManager.queryRunner.query(`
+				CREATE TRIGGER ai
+					after INSERT ON ${tableNameWithSchema}
+					for each row
+					execute procedure graphql_subscription('events', '${tableName}S', 'id');
+			`)
+			console.log('create new table', tableNameWithSchema);
 		});
 	}
 
