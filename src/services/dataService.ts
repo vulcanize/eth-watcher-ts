@@ -822,11 +822,6 @@ VALUES
 				type: 'event',
 				id: event.eventId
 			});
-			const tableNameWithSchema = DataService._getTableName({
-				contractId: contract.contractId,
-				type: 'event',
-				id: event.eventId
-			});
 			const tableName = DataService._getTableName({
 				contractId: contract.contractId,
 				type: 'event',
