@@ -8,7 +8,7 @@ export default class SlotRepository {
 		this.queryRunner = queryRunner;
     }
 
-    public async getByValue(table: string, name: string, value: string) {
+    public async getByValue(table: string, name: string, value: string): Promise<number> {
 		const sql = `SELECT id FROM ${table} WHERE ${name}=$1`;
 		const res = await this.queryRunner.query(sql, [value]);
 		if (!res || !res.length) {

@@ -78,7 +78,7 @@ export default class AddressIdSlotIdRepository {
 		return data[0]?.address_id;
 	}
 
-	public async syncAddressSlotHashes(contractId: number, slotId: number, stateStructure: Structure) {
+	public async syncAddressSlotHashes(contractId: number, slotId: number, stateStructure: Structure): Promise<void> {
 		const sql = `UPDATE data.contract_id_${contractId}_state_id_${slotId} a
 					SET address_id=b.address_id
 					FROM data.contract_id_${contractId}_address_slot_id_${slotId} b

@@ -784,7 +784,7 @@ VALUES
 		- contract_id_${contractId}_state_id_${slotId} - which stores mapping key hash for specific slot.
 		we need to match their hashes and update address_id in table contract_id_${contractId}_state_id_${slotId}
 	 */
-	private async matchAddressAndHash(contractId: number) {
+	private async matchAddressAndHash(contractId: number): Promise<void> {
 		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 
 		const states = Store.getStore().getStatesByContractId(contractId);
