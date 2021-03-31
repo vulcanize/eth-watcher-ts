@@ -27,7 +27,7 @@ import DecodeService from './decodeService';
 import {
 	ABI,
 	ABIElem,
-	ABIInput,
+	ABIInput, ABIInputData,
 	EthHeaderCid,
 	EthReceiptCid,
 	EthStateCid,
@@ -55,11 +55,6 @@ const INDEX = [
 	'000000000000000000000000000000000000000000000000000000000000000b', // 11
 	'000000000000000000000000000000000000000000000000000000000000000c', // 12
 ];
-
-type ABIInputData = {
-	name: string;
-	value?: any; // eslint-disable-line
-}
 
 export default class DataService {
 
@@ -194,6 +189,17 @@ VALUES
 			decoded,
 			relatedNode.mhKey,
 		);
+
+		for (const item of decoded) {
+			if (item.type === 'address') {
+				// create address if it doesn't exist
+				const addressModel = await this.saveAddress(`0x${item.value}`);
+				// fill address slot tables
+				await this.fillAddressSlotTables(target.contractId, addressModel);
+
+				await this.matchAddressAndHash(target.contractId);
+			}
+		}
 
 		console.log(`Event ${event.name} saved`);
 	}
@@ -754,6 +760,40 @@ VALUES
 		}
 
 		return id;
+	}
+
+	private async fillAddressSlotTables(contractId: number, address: Address): Promise<void> {
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
+		const states = Store.getStore().getStatesByContractId(contractId);
+		for (const state of states) {
+			const structure = toStructure(state.type, state.variable);
+			if (structure.type === 'mapping' || structure.type === 'struct') {
+				const isExist = await addressIdSlotIdRepository.isExist(contractId,  state.stateId, address.addressId);
+				if (!isExist) {
+					const hash = DataService._getKeyForMapping(address.address, state.slot);
+					await addressIdSlotIdRepository.add(contractId, address.addressId, state.stateId, hash);
+				}
+			}
+		}
+	}
+
+	/*
+		we have tables:
+		- contract_id_${contractId}_address_slot_id_${slotId} which contains Address ID and its hash for specific slot
+		- contract_id_${contractId}_state_id_${slotId} - which stores mapping key hash for specific slot.
+		we need to match their hashes and update address_id in table contract_id_${contractId}_state_id_${slotId}
+	 */
+	private async matchAddressAndHash(contractId: number) {
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
+		const states = Store.getStore().getStatesByContractId(contractId);
+		for (const state of states) {
+			const structure = toStructure(state.type, state.variable);
+			if (structure.type === 'mapping') {
+				await addressIdSlotIdRepository.syncAddressSlotHashes(contractId, state.stateId, structure);
+			}
+		}
 	}
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {

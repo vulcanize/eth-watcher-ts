@@ -10,6 +10,7 @@ export * from './graphql';
 export type ABIInputData = {
     name: string;
     value?: any; // eslint-disable-line
+    type?: string;
 }
 
 export type DecodeReceiptResult = {

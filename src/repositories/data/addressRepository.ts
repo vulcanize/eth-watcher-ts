@@ -14,4 +14,12 @@ export default class AddressRepository extends Repository<Address> {
 			hash: hash.toLowerCase(),
 		});
 	}
+
+	public async get(address: string): Promise<Address> {
+		return await this.findOne({
+			where: {
+				address: address.toLowerCase()
+			}
+		});
+	}
 }

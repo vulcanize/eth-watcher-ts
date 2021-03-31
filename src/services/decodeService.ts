@@ -110,6 +110,7 @@ export default class DecodeService {
 							array.push({
 								name: input.name,
 								value: abi.rawDecode([input.internalType], Buffer.from(topic, 'hex'))[0],
+								type: input.internalType,
 							});
 						} catch (e) {
 							console.log('Error abi decode', input.name, input.internalType, e.message);
@@ -120,6 +121,7 @@ export default class DecodeService {
 						array.push({
 							name: input.name,
 							value: messages[index],
+							type: input.internalType,
 						});
 					});
 

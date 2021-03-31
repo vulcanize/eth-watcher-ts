@@ -1,5 +1,6 @@
 import {EntityRepository, QueryRunner, Table} from 'typeorm';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import {Structure} from "../../services/dataTypeParser";
 
 @EntityRepository()
 export default class AddressIdSlotIdRepository {
@@ -10,7 +11,7 @@ export default class AddressIdSlotIdRepository {
     }
 
     private getTableName(contractId: number, slotId: number): string {
-		return `data.contract_id_${contractId}_slot_id_${slotId}`;
+		return `data.contract_id_${contractId}_address_slot_id_${slotId}`;
 	}
 
 	public async createTable(contractId: number, slotId: number): Promise<null> {
@@ -75,5 +76,16 @@ export default class AddressIdSlotIdRepository {
 		}
 
 		return data[0]?.address_id;
+	}
+
+	public async syncAddressSlotHashes(contractId: number, slotId: number, stateStructure: Structure) {
+		const sql = `UPDATE data.contract_id_${contractId}_state_id_${slotId} a
+					SET address_id=b.address_id
+					FROM data.contract_id_${contractId}_address_slot_id_${slotId} b
+					WHERE
+					  a.address_id IS NULL
+					  AND a.${stateStructure.name}=b.hash`;
+
+		return this.queryRunner.query(sql);
 	}
 }
