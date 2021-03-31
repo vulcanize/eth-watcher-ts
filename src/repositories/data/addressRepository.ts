@@ -10,8 +10,8 @@ export default class AddressRepository extends Repository<Address> {
 
 	public async add(address: string, hash: string): Promise<Address> {
 		return this.save({
-			address,
-			hash,
+			address: address.toLowerCase(),
+			hash: hash.toLowerCase(),
 		});
 	}
 }

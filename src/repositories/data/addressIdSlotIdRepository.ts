@@ -9,8 +9,12 @@ export default class AddressIdSlotIdRepository {
 		this.queryRunner = queryRunner;
     }
 
-	public async createTable(addressId, slotId): Promise<null> {
-		const tableName = `data.address_id_${addressId}_slot_id_${slotId}`;
+    private getTableName(contractId: number, slotId: number): string {
+		return `data.contract_id_${contractId}_slot_id_${slotId}`;
+	}
+
+	public async createTable(contractId: number, slotId: number): Promise<null> {
+		const tableName = this.getTableName(contractId, slotId);
 		const table = await this.queryRunner.getTable(tableName);
 
 		if (table) {
@@ -41,16 +45,16 @@ export default class AddressIdSlotIdRepository {
 		console.log('create new table', tableName);
 	}
 
-	public async add(cotractAddressId: number, addressId, slotId: number, hash: string): Promise<null> {
-		const tableName = `data.address_id_${cotractAddressId}_slot_id_${slotId}`;
+	public async add(contractId: number, addressId, slotId: number, hash: string): Promise<null> {
+		const tableName = this.getTableName(contractId, slotId);
 		const sql = `INSERT INTO ${tableName} (address_id, hash) VALUES (${addressId}, '${hash}');`;
 		console.log(sql);
 
 		return this.queryRunner.query(sql);
 	}
 
-	public async isExist(cotractAddressId: number, slotId: number, addressId: number): Promise<boolean> {
-		const tableName = `data.address_id_${cotractAddressId}_slot_id_${slotId}`;
+	public async isExist(contractId: number, slotId: number, addressId: number): Promise<boolean> {
+		const tableName = this.getTableName(contractId, slotId);
 		const sql = `SELECT * FROM ${tableName} WHERE address_id=${addressId};`;
 
 		const data = await this.queryRunner.query(sql);
@@ -61,8 +65,8 @@ export default class AddressIdSlotIdRepository {
 		return data[0]?.address_id ? true : false;
 	}
 
-	public async getAddressIdByHash(cotractAddressId: number, slotId: number, hash: string): Promise<number> {
-		const tableName = `data.address_id_${cotractAddressId}_slot_id_${slotId}`;
+	public async getAddressIdByHash(contractId: number, slotId: number, hash: string): Promise<number> {
+		const tableName = this.getTableName(contractId, slotId);
 		const sql = `SELECT * FROM ${tableName} WHERE hash='${hash}';`;
 
 		const data = await this.queryRunner.query(sql);

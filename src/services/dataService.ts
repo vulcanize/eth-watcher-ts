@@ -362,7 +362,12 @@ VALUES
 
 							let value;
 							if (structure.value.kind === 'string') {
-								value = toAscii(storageDataDecoded.toString('hex'));
+								const result = this.deriveStringFromStorage(state.slot, relatedNode?.storageCidsByStateId?.nodes);
+								if (!result.success) {
+									continue;
+								}
+
+								value = result.result;
 							} else {
 								value = abi.rawDecode([ structure.value.kind ], storageDataDecoded)[0];
 							}
@@ -375,7 +380,9 @@ VALUES
 
 							console.log('saving state', structure.value.name, value);
 
-							const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
+							// try to derive address by storageLeafKey (keccack256(slot+address))
+							const addressId = await addressIdSlotIdRepository.getAddressIdByHash(contract.contractId, state.stateId, storage.storageLeafKey);
+							const id: number = await this.saveStorageKeyForMapping(tableOptions[0].name, structure.name, storage.storageLeafKey, addressId);
 							await slotRepository.add(tableOptions[1].name, [
 								'state_id',
 								'contract_id',
@@ -391,13 +398,13 @@ VALUES
 							]);
 						}
 					} else if (structure.value.type === 'struct') {
-						// asd mmaping -> struct
+						// mapping -> struct
 						console.log('structure.value', structure.value.fields);
 
 						let storageLeafKey;
 						let addressId;
 						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
-							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contractAddress.addressId, state.stateId, storage.storageLeafKey);
+							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contract.contractId, state.stateId, storage.storageLeafKey);
 
 							if (!addressId) {
 								continue;
@@ -719,29 +726,57 @@ VALUES
 		return notSyncedIds;
 	}
 
-	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
+	private async saveAddress(address: string): Promise<Address> {
 		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
+
+		let addressModel: Address = await addressRepository.get(address);
+		if (!addressModel) {
+			const hash = '0x' + keccakFromHexString(address).toString('hex');
+			addressModel = await addressRepository.add(address, hash);
+		}
+
+		return addressModel;
+	}
+
+	// saveStorageKey used to save hierarchy structure for mapping
+	private async saveStorageKeyForMapping(tableName: string, name: string, value: string, addressId: number): Promise<number> {
+		const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+
+		let id = await slotRepository.getByValue(tableName, name, value)
+		if (!id) {
+			const names = [name];
+			const values = [value];
+			if (addressId) {
+				names.push('address_id');
+				values.push(addressId.toString());
+			}
+			id = await slotRepository.add(tableName, names, values);
+		}
+
+		return id;
+	}
+
+	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
 		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
 
 		for (const contract of contracts) {
-			let address: Address = Store.getStore().getAddress(contract.address);
-			if (!address) {
-				const hash = '0x' + keccakFromHexString(contract.address).toString('hex');
-				address = await addressRepository.add(contract.address, hash);
-				Store.getStore().addAddress(address);
+			let contractAddress: Address = Store.getStore().getAddress(contract.address);
+			if (!contractAddress) {
+				contractAddress = await this.saveAddress(contract.address);
 			}
+			Store.getStore().addAddress(contractAddress);
 
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
 				const structure = toStructure(state.type, state.variable);
 				if (structure.type === 'mapping' || structure.type === 'struct') {
-					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
+					await addressIdSlotIdRepository.createTable(contract.contractId, state.stateId);
 					const addresses: Address[] = Store.getStore().getAddresses();
 					for (const adr of addresses) {
-						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
+						const isExist = await addressIdSlotIdRepository.isExist(contract.contractId,  state.stateId, adr.addressId);
 						if (!isExist) {
 							const hash = DataService._getKeyForMapping(adr.address, state.slot);
-							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);
+							await addressIdSlotIdRepository.add(contract.contractId, adr.addressId, state.stateId, hash);
 						}
 					}
 				}
@@ -860,10 +895,10 @@ VALUES
 				return;
 			}
 
-			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
-			await Promise.all(
-				tableOptions.map((t) => entityManager.queryRunner.createTable(new Table(t), true))
-			);
+			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable));
+			for (const tableOption of tableOptions) {
+				await entityManager.queryRunner.createTable(new Table(tableOption), true)
+			}
 			console.log('create new table', tableName);
 		});
 	}
