@@ -324,9 +324,9 @@ VALUES
 
 		//console.log(JSON.stringify(relatedNode, null, 2));
 
-		console.log('before updating header');
+		// console.log('before updating header');
 		await this.processHeader(relatedNode?.ethHeaderCidByHeaderId);
-		console.log('after updating header');
+		// console.log('after updating header');
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {

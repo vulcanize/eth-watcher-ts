@@ -250,29 +250,30 @@ describe('toTableOptions', function () {
       "kind": "string",
     } as Structure;
     const tableOptions1 = toTableOptions('test', st1);
-    expect({
+    expect(tableOptions1[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          name: 'state_id',
-          type: 'integer',
-        }, {
-          name: 'contract_id',
-          type: 'integer',
-        }, {
-          name: 'mh_key',
-          type: 'text',
-        }, {
-          "isNullable": true,
-          "name": "name",
-          "type": "text",
-        }],
-    }).toStrictEqual(tableOptions1[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        name: 'state_id',
+        type: 'integer',
+      }, {
+        name: 'contract_id',
+        type: 'integer',
+      }, {
+        name: 'mh_key',
+        type: 'text',
+      }, {
+        "isNullable": true,
+        "name": "name",
+        "type": "text",
+      }],
+    });
 
     const st2 = {
       "type": "simple",
@@ -280,29 +281,30 @@ describe('toTableOptions', function () {
       "kind": "uint8",
     } as Structure;
     const tableOptions2 = toTableOptions('test', st2);
-    expect({
+    expect(tableOptions2[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          name: 'state_id',
-          type: 'integer',
-        }, {
-          name: 'contract_id',
-          type: 'integer',
-        }, {
-          name: 'mh_key',
-          type: 'text',
-        }, {
-          "isNullable": true,
-          "name": "decimals",
-          "type": "numeric",
-        }],
-    }).toStrictEqual(tableOptions2[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        name: 'state_id',
+        type: 'integer',
+      }, {
+        name: 'contract_id',
+        type: 'integer',
+      }, {
+        name: 'mh_key',
+        type: 'text',
+      }, {
+        "isNullable": true,
+        "name": "decimals",
+        "type": "numeric",
+      }],
+    });
   });
 
   test('array types', function () {
@@ -317,21 +319,22 @@ describe('toTableOptions', function () {
     } as Structure;
     const tableOptions1 = toTableOptions('test', st1);
 
-    expect({
+    expect(tableOptions1[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "isArray": true,
-          "isNullable": true,
-          "name": "value0",
-          "type": "text",
-        }],
-    }).toStrictEqual(tableOptions1[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "isArray": true,
+        "isNullable": true,
+        "name": "value0",
+        "type": "text",
+      }],
+    });
   });
 
   test('mapping types', function () {
@@ -349,48 +352,64 @@ describe('toTableOptions', function () {
 
     const tableOptions1 = toTableOptions('test', st1);
 
-    expect({
+    expect(tableOptions1[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [{
+        name: 'test',
+        columnNames: ['address_id'],
+        referencedTableName: 'data.addresses',
+        referencedColumnNames: ['address_id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "isNullable": true,
-          "name": "balances",
-          "type": "character varying(66)",
-        }],
-    }).toStrictEqual(tableOptions1[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "isNullable": true,
+        "name": "balances",
+        "type": "character varying(66)",
+      }, {
+        "isNullable": true,
+        "name": "address_id",
+        "type": "integer",
+      }, ],
+    });
 
-    expect({
+    expect(tableOptions1[1]).toStrictEqual({
       "name": "test_balances_id",
+      "foreignKeys": [{
+        name: `test_balances_id`,
+        columnNames: [`balances_id`],
+        referencedTableName: 'test',
+        referencedColumnNames: ['id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "isNullable": false,
-          "name": "balances_id",
-          "type": "integer",
-        }, {
-          name: 'state_id',
-          type: 'integer',
-        }, {
-          name: 'contract_id',
-          type: 'integer',
-        }, {
-          name: 'mh_key',
-          type: 'text',
-        }, {
-          "isNullable": true,
-          "name": "value0",
-          "type": "numeric",
-        }],
-    }).toStrictEqual(tableOptions1[1]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "isNullable": false,
+        "name": "balances_id",
+        "type": "integer",
+      }, {
+        name: 'state_id',
+        type: 'integer',
+      }, {
+        name: 'contract_id',
+        type: 'integer',
+      }, {
+        name: 'mh_key',
+        type: 'text',
+      }, {
+        "isNullable": true,
+        "name": "value0",
+        "type": "numeric",
+      }],
+    });
 
     // mapping (address => mapping (address => uint96)) internal allowances;
 
@@ -427,42 +446,73 @@ describe('toTableOptions', function () {
 
       const tableOptions2 = toTableOptions('test', st2);
 
-      expect({
+      expect(tableOptions2[0]).toStrictEqual({
         "name": "test",
+        "foreignKeys": [{
+          name: `test`,
+          columnNames: [`address_id`],
+          referencedTableName: 'data.addresses',
+          referencedColumnNames: ['address_id'],
+        }],
         "columns": [{
-            "generationStrategy": "increment",
-            "isGenerated": true,
-            "isPrimary": true,
-            "name": "id",
-            "type": "integer",
-          }, {
-            "isNullable": true,
-            "name": "allowances",
-            "type": "character varying(66)",
-          }],
-      }).toStrictEqual(tableOptions2[0]);
-
-    expect({
-      "name": "test_allowances_id",
-      "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
           "isPrimary": true,
           "name": "id",
           "type": "integer",
         }, {
-          "name": "allowances_id",
-          "type": "integer",
-          "isNullable": false
-        },{
           "isNullable": true,
-          "name": "value0",
+          "name": "allowances",
           "type": "character varying(66)",
+        }, {
+          name: 'address_id',
+          type: 'integer',
+          isNullable: true,
         }],
-    }).toStrictEqual(tableOptions2[1]);
+      });
+
+    expect(tableOptions2[1]).toStrictEqual({
+      "name": "test_allowances_id",
+      "foreignKeys": [{
+        name: `test_allowances_id`,
+        columnNames: [`allowances_id`],
+        referencedTableName: 'test',
+        referencedColumnNames: ['id'],
+      }, {
+        name: `test_allowances_id`,
+        columnNames: [`address_id`],
+        referencedTableName: 'data.addresses',
+        referencedColumnNames: ['address_id'],
+      },],
+      "columns": [{
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "name": "allowances_id",
+        "type": "integer",
+        "isNullable": false
+      },{
+        "isNullable": true,
+        "name": "value0",
+        "type": "character varying(66)",
+      }, {
+        "isNullable": true,
+        "name": "address_id",
+        "type": "integer",
+      },],
+    });
 
     expect({
       "name": "test_allowances_id_value0_id",
+      "foreignKeys": [{
+        name: `test_allowances_id_value0_id`,
+        columnNames: [`value0_id`],
+        referencedTableName: 'test_allowances_id',
+        referencedColumnNames: ['id'],
+      }],
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -511,6 +561,7 @@ describe('toTableOptions', function () {
 
     expect({
       "name": "test",
+      "foreignKeys": [],
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -552,6 +603,7 @@ describe('toTableOptions', function () {
 
     expect({
       "name": "test",
+      "foreignKeys": [],
       "columns": [{
           "generationStrategy": "increment",
           "isGenerated": true,
@@ -561,28 +613,34 @@ describe('toTableOptions', function () {
         }],
     }).toStrictEqual(tableOptions2[0]);
 
-    expect({
+    expect(tableOptions2[1]).toStrictEqual({
       "name": "test_checkpoint_id",
+      "foreignKeys": [{
+        name: `test_checkpoint_id`,
+        columnNames: [`checkpoint_id`],
+        referencedTableName: 'test',
+        referencedColumnNames: ['checkpoint'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "name": "checkpoint_id",
-          "type": "integer",
-          "isNullable": false
-        }, {
-          "name": "fromBlock",
-          "type": "numeric",
-          "isNullable": true,
-        },{
-          "name": "votes",
-          "type": "numeric",
-          "isNullable": true,
-        }],
-    }).toStrictEqual(tableOptions2[1]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "name": "checkpoint_id",
+        "type": "integer",
+        "isNullable": false
+      }, {
+        "name": "fromBlock",
+        "type": "numeric",
+        "isNullable": true,
+      },{
+        "name": "votes",
+        "type": "numeric",
+        "isNullable": true,
+      }],
+    });
 
     /*
       mapping(address => Checkpoint) public checkpoint;
@@ -607,43 +665,59 @@ describe('toTableOptions', function () {
 
     const tableOptions3 = toTableOptions('test', st3);
 
-    expect({
+    expect(tableOptions3[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [{
+        name: 'test',
+        columnNames: ['address_id'],
+        referencedTableName: 'data.addresses',
+        referencedColumnNames: ['address_id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "isNullable": true,
-          "name": "checkpoint",
-          "type": "character varying(66)",
-        }],
-    }).toStrictEqual(tableOptions3[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "isNullable": true,
+        "name": "checkpoint",
+        "type": "character varying(66)",
+      }, {
+        name: 'address_id',
+        type: 'integer',
+        isNullable: true,
+      }],
+    });
 
-    expect({
+    expect(tableOptions3[1]).toStrictEqual({
       "name": "test_checkpoint_id",
+      "foreignKeys": [{
+        name: 'test_checkpoint_id',
+        columnNames: ['checkpoint_id'],
+        referencedTableName: 'test',
+        referencedColumnNames: ['id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "name": "checkpoint_id",
-          "type": "integer",
-          "isNullable": false
-        }, {
-          "name": "fromBlock",
-          "type": "numeric",
-          "isNullable": true,
-        },{
-          "name": "votes",
-          "type": "numeric",
-          "isNullable": true,
-        }],
-    }).toStrictEqual(tableOptions3[1]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "name": "checkpoint_id",
+        "type": "integer",
+        "isNullable": false
+      }, {
+        "name": "fromBlock",
+        "type": "numeric",
+        "isNullable": true,
+      },{
+        "name": "votes",
+        "type": "numeric",
+        "isNullable": true,
+      }],
+    });
 
     /*
       mapping(address => mapping(uint => Checkpoint)) public checkpoint;
@@ -673,61 +747,83 @@ describe('toTableOptions', function () {
 
     const tableOptions4 = toTableOptions('test', st4);
 
-    expect({
+    expect(tableOptions4[0]).toStrictEqual({
       "name": "test",
+      "foreignKeys": [{
+        name: 'test',
+        columnNames: ['address_id'],
+        referencedTableName: 'data.addresses',
+        referencedColumnNames: ['address_id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "isNullable": true,
-          "name": "checkpoint",
-          "type": "character varying(66)",
-        }],
-    }).toStrictEqual(tableOptions4[0]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "isNullable": true,
+        "name": "checkpoint",
+        "type": "character varying(66)",
+      }, {
+        "isNullable": true,
+        "name": "address_id",
+        "type": "integer",
+      }, ],
+    });
 
-    expect({
+    expect(tableOptions4[1]).toStrictEqual({
       "name": "test_checkpoint_id",
+      "foreignKeys": [{
+        name: 'test_checkpoint_id',
+        columnNames: ['checkpoint_id'],
+        referencedTableName: 'test',
+        referencedColumnNames: ['id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "name": "checkpoint_id",
-          "type": "integer",
-          "isNullable": false
-        }, {
-          "name": "value0",
-          "type": "numeric",
-          "isNullable": true,
-        }],
-    }).toStrictEqual(tableOptions4[1]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "name": "checkpoint_id",
+        "type": "integer",
+        "isNullable": false
+      }, {
+        "name": "value0",
+        "type": "numeric",
+        "isNullable": true,
+      }],
+    });
 
-    expect({
+    expect(tableOptions4[2]).toStrictEqual({
       "name": "test_checkpoint_id_value0_id",
+      "foreignKeys": [{
+        name: 'test_checkpoint_id_value0_id',
+        columnNames: ['value0_id'],
+        referencedTableName: 'test_checkpoint_id',
+        referencedColumnNames: ['id'],
+      }],
       "columns": [{
-          "generationStrategy": "increment",
-          "isGenerated": true,
-          "isPrimary": true,
-          "name": "id",
-          "type": "integer",
-        }, {
-          "name": "value0_id",
-          "type": "integer",
-          "isNullable": false
-        }, {
-          "name": "fromBlock",
-          "type": "numeric",
-          "isNullable": true,
-        }, {
-          "name": "votes",
-          "type": "numeric",
-          "isNullable": true,
-        }],
-    }).toStrictEqual(tableOptions4[2]);
+        "generationStrategy": "increment",
+        "isGenerated": true,
+        "isPrimary": true,
+        "name": "id",
+        "type": "integer",
+      }, {
+        "name": "value0_id",
+        "type": "integer",
+        "isNullable": false
+      }, {
+        "name": "fromBlock",
+        "type": "numeric",
+        "isNullable": true,
+      }, {
+        "name": "votes",
+        "type": "numeric",
+        "isNullable": true,
+      }],
+    });
   });
 });
