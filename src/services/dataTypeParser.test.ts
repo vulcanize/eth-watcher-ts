@@ -355,7 +355,7 @@ describe('toTableOptions', function () {
     expect(tableOptions1[0]).toStrictEqual({
       "name": "test",
       "foreignKeys": [{
-        name: 'test',
+        name: 'address_id_data.address',
         columnNames: ['address_id'],
         referencedTableName: 'data.addresses',
         referencedColumnNames: ['address_id'],
@@ -449,7 +449,7 @@ describe('toTableOptions', function () {
       expect(tableOptions2[0]).toStrictEqual({
         "name": "test",
         "foreignKeys": [{
-          name: `test`,
+          name: `address_id_data.address`,
           columnNames: [`address_id`],
           referencedTableName: 'data.addresses',
           referencedColumnNames: ['address_id'],
@@ -479,7 +479,7 @@ describe('toTableOptions', function () {
         referencedTableName: 'test',
         referencedColumnNames: ['id'],
       }, {
-        name: `test_allowances_id`,
+        name: `address_id_data.address`,
         columnNames: [`address_id`],
         referencedTableName: 'data.addresses',
         referencedColumnNames: ['address_id'],
@@ -668,7 +668,7 @@ describe('toTableOptions', function () {
     expect(tableOptions3[0]).toStrictEqual({
       "name": "test",
       "foreignKeys": [{
-        name: 'test',
+        name: 'address_id_data.address',
         columnNames: ['address_id'],
         referencedTableName: 'data.addresses',
         referencedColumnNames: ['address_id'],
@@ -750,7 +750,7 @@ describe('toTableOptions', function () {
     expect(tableOptions4[0]).toStrictEqual({
       "name": "test",
       "foreignKeys": [{
-        name: 'test',
+        name: 'address_id_data.address',
         columnNames: ['address_id'],
         referencedTableName: 'data.addresses',
         referencedColumnNames: ['address_id'],

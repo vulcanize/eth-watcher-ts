@@ -40,7 +40,7 @@ export type Field = {
 }
 
 function getPgType(abiType: string): string {
-  let pgType = 'text';
+  let pgType;
 
   // Fill in pg type based on abi type
   switch (abiType.replace(/\d+/g, '')) {
@@ -280,7 +280,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: TableFore
             isNullable: true,
           });
           tableOptions.foreignKeys.push({
-            name: tableName,
+            name: `address_id_data.address`,
             columnNames: ['address_id'],
             referencedTableName: 'data.addresses',
             referencedColumnNames: ['address_id'],
@@ -308,7 +308,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: TableFore
 
           return [tableOptions];
         } else if (obj.kind.type === 'mapping') {
-          const fkChildTable = {
+          const fkChildTable: TableForeignKeyOptions = {
             name: `${tableName}_${obj.kind.name}_id`,
             columnNames: [`${obj.kind.name}_id`],
             referencedTableName: tableName,
@@ -317,7 +317,7 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: TableFore
 
           return [tableOptions, ...toTableOptions(`${tableName}_${obj.kind.name}_id`, obj.kind.value, fkChildTable)];
         } else if (obj.kind.type === 'struct') {
-          const fkChildTable = {
+          const fkChildTable: TableForeignKeyOptions = {
             name: `${tableName}_${obj.name}_id`,
             columnNames: [`${obj.name}_id`],
             referencedTableName: tableName,
