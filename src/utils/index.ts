@@ -64,12 +64,12 @@ export const decodeTransactionData = (data: string) => { // eslint-disable-line
     return {
         nonce: decoded[0].toString('hex'),
         gasPrice: decoded[1].toString('hex'),
-        gas: decoded[2].toString('hex'),
-        value: decoded[3].toString('hex'),
-        input: decoded[4].toString('hex'),
-        v: decoded[5].toString('hex'),
-        r: decoded[6].toString('hex'),
-        s: decoded[7].toString('hex'),
-        to: decoded[8].toString('hex'),
+        gas: decoded[2].toString('hex'), // GasLimit
+        to: decoded[3].toString('hex'), // Recipient
+        value: decoded[4].toString('hex'), // Amount
+        input: decoded[5].toString('hex'), // Payload
+        v: decoded[6].toString('hex'),
+        r: decoded[7].toString('hex'),
+        s: decoded[8].toString('hex'),
     }
 }
