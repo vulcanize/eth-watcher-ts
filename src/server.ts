@@ -26,7 +26,8 @@ const server = async function({
 	createConnection(connectionOptions).then(async () => {
 		const app = new App();
 
-		Store.init();
+		// @TODO autoUpdate=true breaks
+		Store.init(false);
 
 		const graphqlClient = new GraphqlClient(env.GRAPHQL_URI, ws);
 		const graphqlService = new GraphqlService(graphqlClient);

@@ -1,5 +1,6 @@
 import { parse, SourceUnit, ContractDefinition, StateVariableDeclaration, StructDefinition, TypeName } from 'solidity-parser-diligence';
 import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import {TableForeignKeyOptions} from "typeorm/schema-builder/options/TableForeignKeyOptions";
 
 export const errUnknownVariable = new Error('unknown variable');
 
@@ -39,7 +40,7 @@ export type Field = {
 }
 
 function getPgType(abiType: string): string {
-  let pgType = 'text';
+  let pgType;
 
   // Fill in pg type based on abi type
   switch (abiType.replace(/\d+/g, '')) {
@@ -218,7 +219,7 @@ export function toFields(obj: Structure): Field[] {
   return fields;
 }
 
-export function toTableOptions(tableName: string, obj: Structure, fk?: string): TableOptions[] {
+export function toTableOptions(tableName: string, obj: Structure, fk?: TableForeignKeyOptions): TableOptions[] {
     const tableOptions: TableOptions = {
         name: tableName,
         columns: [
@@ -229,15 +230,18 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
             isGenerated: true,
             generationStrategy: 'increment'
           }
-        ]
+        ],
+        foreignKeys: [],
       };
 
       if (fk) {
         tableOptions.columns.push({
-          name: fk,
+          name: fk.columnNames[0],
           type: 'integer',
           isNullable: false,
         });
+
+        tableOptions.foreignKeys.push(fk);
       }
 
       if (obj.type === 'simple') {
@@ -268,7 +272,29 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
           isNullable: true,
         });
 
-        return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.value, `${obj.name}_id`)];
+        // add relation to address table for mapping(address => ..)
+        if (obj.key === 'address') {
+          tableOptions.columns.push({
+            name: 'address_id',
+            type: 'integer',
+            isNullable: true,
+          });
+          tableOptions.foreignKeys.push({
+            name: `address_id_data.address`,
+            columnNames: ['address_id'],
+            referencedTableName: 'data.addresses',
+            referencedColumnNames: ['address_id'],
+          });
+        }
+
+        const fkChildTable: TableForeignKeyOptions = {
+          name: `${tableName}_${obj.name}_id`,
+          columnNames: [`${obj.name}_id`],
+          referencedTableName: tableName,
+          referencedColumnNames: ['id'],
+        };
+
+        return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.value, fkChildTable)];
       }
 
       if (obj.type === 'array') {
@@ -282,9 +308,23 @@ export function toTableOptions(tableName: string, obj: Structure, fk?: string): 
 
           return [tableOptions];
         } else if (obj.kind.type === 'mapping') {
-          return [tableOptions, ...toTableOptions(`${tableName}_${obj.kind.name}_id`, obj.kind.value, `${obj.kind.name}_id`)];
+          const fkChildTable: TableForeignKeyOptions = {
+            name: `${tableName}_${obj.kind.name}_id`,
+            columnNames: [`${obj.kind.name}_id`],
+            referencedTableName: tableName,
+            referencedColumnNames: [obj.kind.name],
+          };
+
+          return [tableOptions, ...toTableOptions(`${tableName}_${obj.kind.name}_id`, obj.kind.value, fkChildTable)];
         } else if (obj.kind.type === 'struct') {
-          return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.kind, `${obj.name}_id`)];
+          const fkChildTable: TableForeignKeyOptions = {
+            name: `${tableName}_${obj.name}_id`,
+            columnNames: [`${obj.name}_id`],
+            referencedTableName: tableName,
+            referencedColumnNames: [obj.name],
+          };
+
+          return [tableOptions, ...toTableOptions(`${tableName}_${obj.name}_id`, obj.kind, fkChildTable)];
         }
       }
 

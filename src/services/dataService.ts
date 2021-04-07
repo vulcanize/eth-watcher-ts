@@ -27,7 +27,7 @@ import DecodeService from './decodeService';
 import {
 	ABI,
 	ABIElem,
-	ABIInput,
+	ABIInput, ABIInputData,
 	EthHeaderCid,
 	EthReceiptCid,
 	EthStateCid,
@@ -55,11 +55,6 @@ const INDEX = [
 	'000000000000000000000000000000000000000000000000000000000000000b', // 11
 	'000000000000000000000000000000000000000000000000000000000000000c', // 12
 ];
-
-type ABIInputData = {
-	name: string;
-	value?: any; // eslint-disable-line
-}
 
 export default class DataService {
 
@@ -195,6 +190,17 @@ VALUES
 			relatedNode.mhKey,
 		);
 
+		for (const item of decoded) {
+			if (item.type === 'address') {
+				// create address if it doesn't exist
+				const addressModel = await this.saveAddress(`0x${item.value}`);
+				// fill address slot tables
+				await this.fillAddressSlotTables(target.contractId, addressModel);
+
+				await this.matchAddressAndHash(target.contractId);
+			}
+		}
+
 		console.log(`Event ${event.name} saved`);
 	}
 
@@ -316,7 +322,7 @@ VALUES
 			return;
 		}
 
-		console.log(JSON.stringify(relatedNode, null, 2));
+		//console.log(JSON.stringify(relatedNode, null, 2));
 
 		await this.processHeader(relatedNode?.ethHeaderCidByHeaderId);
 
@@ -328,7 +334,7 @@ VALUES
 			for (const state of states) {
 				const structure = toStructure(state.type, state.variable);
 
-				console.log('structure', structure);
+				//console.log('structure', structure);
 
 				const tableName = DataService._getTableName({
 					contractId: contract.contractId,
@@ -336,11 +342,12 @@ VALUES
 					id: state.stateId,
 				});
 				const tableOptions = toTableOptions(tableName, structure)
-				console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
+				//console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
-					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+					const queryRunner = getConnection().createQueryRunner();
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
+					const slotRepository: SlotRepository = new SlotRepository(queryRunner);
 
 					if (structure.value.type === 'simple') {
 						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
@@ -348,6 +355,7 @@ VALUES
 							// const addressId = await addressIdSlotIdRepository.getAddressIdByHash(address.addressId, state.stateId, storage.storageLeafKey);
 
 							if (!storage.storageLeafKey) {
+								console.log('storage mapping. skip storage without leaf key');
 								continue;
 							}
 
@@ -359,34 +367,49 @@ VALUES
 
 							let value;
 							if (structure.value.kind === 'string') {
-								value = toAscii(storageDataDecoded.toString('hex'));
+								const result = this.deriveStringFromStorage(state.slot, relatedNode?.storageCidsByStateId?.nodes);
+								if (!result.success) {
+									continue;
+								}
+
+								value = result.result;
 							} else {
 								value = abi.rawDecode([ structure.value.kind ], storageDataDecoded)[0];
 							}
 
-							console.log(decoded);
-							console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+							// console.log(decoded);
+							// console.log(rlp.decode(Buffer.from(decoded[1], 'hex')));
+							//
+							// console.log(decoded[0].toString('hex'));
+							// console.log(value);
 
-							console.log(decoded[0].toString('hex'));
-							console.log(value);
+							console.log('saving state', structure.value.name, value);
 
-							const id = await slotRepository.add(tableOptions[0].name, [structure.name], [decoded[0].toString('hex')]);
+							// try to derive address by storageLeafKey (keccack256(slot+address))
+							const addressId = await addressIdSlotIdRepository.getAddressIdByHash(contract.contractId, state.stateId, storage.storageLeafKey);
+							const id: number = await this.saveStorageKeyForMapping(tableOptions[0].name, structure.name, storage.storageLeafKey, addressId);
 							await slotRepository.add(tableOptions[1].name, [
+								'state_id',
+								'contract_id',
+								'mh_key',
 								`${structure.name}_id`,
 								structure.value.name,
 							], [
+								state.stateId,
+								contract.contractId,
+								storage.blockByMhKey.key,
 								id,
 								value,
 							]);
 						}
 					} else if (structure.value.type === 'struct') {
-						// asd mmaping -> struct
+						// mapping -> struct
 						console.log('structure.value', structure.value.fields);
 
 						let storageLeafKey;
 						let addressId;
 						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
-							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contractAddress.addressId, state.stateId, storage.storageLeafKey);
+							addressId = await addressIdSlotIdRepository.getAddressIdByHash(contract.contractId, state.stateId, storage.storageLeafKey);
 
 							if (!addressId) {
 								continue;
@@ -412,7 +435,7 @@ VALUES
 						for (const field of structure.value.fields) {
 							if (field.type === 'simple') {
 								const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === hashes[index]);
-								console.log('storageLeafKey', hashes[index]);
+								// console.log('storageLeafKey', hashes[index]);
 								index++;
 
 								if (!storage) {
@@ -442,15 +465,18 @@ VALUES
 					} else {
 						// TODO
 					}
+
+					await queryRunner.release();
 				} else if (structure.type === 'struct') {
-					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+					const queryRunner = getConnection().createQueryRunner();
+					const slotRepository: SlotRepository = new SlotRepository(queryRunner);
 
 					let index = state.slot;
 					const data: { name: string; value: any }[] = []; // eslint-disable-line
 					for (const field of structure.fields) {
 						if (field.type === 'simple') {
 							const storageLeafKey = DataService._getKeyForFixedType(index);
-							console.log('storageLeafKey', storageLeafKey);
+							// console.log('storageLeafKey', storageLeafKey);
 							index++;
 
 							const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
@@ -474,12 +500,12 @@ VALUES
 					}
 
 					await slotRepository.add(tableOptions[0].name, data.map((d) => d.name), data.map((d) => d.value));
+					await queryRunner.release();
 				} else if (structure.type === 'simple') {
 					const storageLeafKey = DataService._getKeyForFixedType(state.slot);
-					console.log('storageLeafKey', storageLeafKey);
+					// console.log('storageLeafKey', storageLeafKey);
 
 					const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
-					console.log('storage', storage);
 					if (!storage) {
 						continue;
 					}
@@ -709,34 +735,105 @@ VALUES
 		return notSyncedIds;
 	}
 
-	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
+	private async saveAddress(address: string): Promise<Address> {
 		const addressRepository: AddressRepository = getConnection().getCustomRepository(AddressRepository);
-		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+
+		let addressModel: Address = await addressRepository.get(address);
+		if (!addressModel) {
+			const hash = '0x' + keccakFromHexString(address).toString('hex');
+			addressModel = await addressRepository.add(address, hash);
+		}
+
+		return addressModel;
+	}
+
+	// saveStorageKey used to save hierarchy structure for mapping
+	private async saveStorageKeyForMapping(tableName: string, name: string, value: string, addressId: number): Promise<number> {
+		const queryRunner = getConnection().createQueryRunner();
+		const slotRepository: SlotRepository = new SlotRepository(queryRunner);
+
+		let id = await slotRepository.getByValue(tableName, name, value)
+		if (!id) {
+			const names = [name];
+			const values = [value];
+			if (addressId) {
+				names.push('address_id');
+				values.push(addressId.toString());
+			}
+			id = await slotRepository.add(tableName, names, values);
+		}
+
+		await queryRunner.release();
+		return id;
+	}
+
+	private async fillAddressSlotTables(contractId: number, address: Address): Promise<void> {
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
+
+		const states = Store.getStore().getStatesByContractId(contractId);
+		for (const state of states) {
+			const structure = toStructure(state.type, state.variable);
+			if (structure.type === 'mapping' || structure.type === 'struct') {
+				const isExist = await addressIdSlotIdRepository.isExist(contractId,  state.stateId, address.addressId);
+				if (!isExist) {
+					const hash = DataService._getKeyForMapping(address.address, state.slot);
+					await addressIdSlotIdRepository.add(contractId, address.addressId, state.stateId, hash);
+				}
+			}
+		}
+
+		await queryRunner.release();
+	}
+
+	/*
+		we have tables:
+		- contract_id_${contractId}_address_slot_id_${slotId} which contains Address ID and its hash for specific slot
+		- contract_id_${contractId}_state_id_${slotId} - which stores mapping key hash for specific slot.
+		we need to match their hashes and update address_id in table contract_id_${contractId}_state_id_${slotId}
+	 */
+	private async matchAddressAndHash(contractId: number): Promise<void> {
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
+
+		const states = Store.getStore().getStatesByContractId(contractId);
+		for (const state of states) {
+			const structure = toStructure(state.type, state.variable);
+			if (structure.type === 'mapping') {
+				await addressIdSlotIdRepository.syncAddressSlotHashes(contractId, state.stateId, structure);
+			}
+		}
+		await queryRunner.release();
+	}
+
+	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
 
 		for (const contract of contracts) {
-			let address: Address = Store.getStore().getAddress(contract.address);
-			if (!address) {
-				const hash = '0x' + keccakFromHexString(contract.address).toString('hex');
-				address = await addressRepository.add(contract.address, hash);
-				Store.getStore().addAddress(address);
+			let contractAddress: Address = Store.getStore().getAddress(contract.address);
+			if (!contractAddress) {
+				contractAddress = await this.saveAddress(contract.address);
 			}
+			Store.getStore().addAddress(contractAddress);
 
 			const states = Store.getStore().getStatesByContractId(contract.contractId);
 			for (const state of states) {
 				const structure = toStructure(state.type, state.variable);
 				if (structure.type === 'mapping' || structure.type === 'struct') {
-					await addressIdSlotIdRepository.createTable(address.addressId, state.stateId);
+					await addressIdSlotIdRepository.createTable(contract.contractId, state.stateId);
 					const addresses: Address[] = Store.getStore().getAddresses();
 					for (const adr of addresses) {
-						const isExist = await addressIdSlotIdRepository.isExist(address.addressId,  state.stateId, adr.addressId);
+						const isExist = await addressIdSlotIdRepository.isExist(contract.contractId,  state.stateId, adr.addressId);
 						if (!isExist) {
 							const hash = DataService._getKeyForMapping(adr.address, state.slot);
-							await addressIdSlotIdRepository.add(address.addressId, adr.addressId, state.stateId, hash);
+							await addressIdSlotIdRepository.add(contract.contractId, adr.addressId, state.stateId, hash);
 						}
 					}
 				}
 			}
 		}
+		await queryRunner.release();
 	}
 
 	private static _getTableName({ contractId, type = 'event', id}, withSchema = true): string {
@@ -850,10 +947,10 @@ VALUES
 				return;
 			}
 
-			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable))
-			await Promise.all(
-				tableOptions.map((t) => entityManager.queryRunner.createTable(new Table(t), true))
-			);
+			const tableOptions = toTableOptions(tableName, toStructure(state.type, state.variable));
+			for (const tableOption of tableOptions) {
+				await entityManager.queryRunner.createTable(new Table(tableOption), true)
+			}
 			console.log('create new table', tableName);
 		});
 	}

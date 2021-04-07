@@ -110,6 +110,7 @@ export default class DecodeService {
 							array.push({
 								name: input.name,
 								value: abi.rawDecode([input.internalType], Buffer.from(topic, 'hex'))[0],
+								type: input.internalType,
 							});
 						} catch (e) {
 							console.log('Error abi decode', input.name, input.internalType, e.message);
@@ -120,6 +121,7 @@ export default class DecodeService {
 						array.push({
 							name: input.name,
 							value: messages[index],
+							type: input.internalType,
 						});
 					});
 
@@ -279,7 +281,7 @@ export default class DecodeService {
 						}
 					} else if (structure.type === 'simple') {
 						const storageLeafKey = '0x' + keccak256(Buffer.from(INDEX[state.slot], 'hex')).toString('hex');
-						console.log('storageLeafKey', storageLeafKey);
+						// console.log('storageLeafKey', storageLeafKey);
 
 						const storage = relatedNode?.storageCidsByStateId?.nodes.find((s) => s.storageLeafKey === storageLeafKey);
 						//console.log('storage', storage);

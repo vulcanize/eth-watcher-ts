@@ -1,4 +1,5 @@
 import {EntityRepository, QueryRunner} from 'typeorm';
+import {ABIInputData} from "../../types";
 
 @EntityRepository()
 export default class EventRepository {
@@ -8,7 +9,7 @@ export default class EventRepository {
 		this.queryRunner = queryRunner;
     }
 
-	public async add(tableName: string, data): Promise<number> {
+	public async add(tableName: string, data: Array<ABIInputData & {isStrict?}>): Promise<number> {
 		const sql = `INSERT INTO ${tableName}
 		(${data.map((line) => line.isStrict ? line.name : 'data_' + line.name.toLowerCase().trim()).join(',')})
 		VALUES

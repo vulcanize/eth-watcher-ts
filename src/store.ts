@@ -58,7 +58,7 @@ export default class Store {
 			return null;
 		}
 
-		return (this.contracts || []).find((contract) => contract.address === address.address);
+		return (this.contracts || []).find((contract) => contract.address.toLowerCase() === address.address.toLowerCase());
 	}
 
 	public getEvents(): Event[] {
@@ -100,7 +100,7 @@ export default class Store {
 	}
 
 	public getAddress(addressString: string): Address {
-		return (this.addresses || []).find((a) => a.address === addressString);
+		return (this.addresses || []).find((a) => a.address.toLowerCase() === addressString.toLowerCase());
 	}
 
 	public getAddressByHash(hash: string): Address {

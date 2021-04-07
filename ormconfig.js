@@ -9,6 +9,11 @@ module.exports = {
     'password': env.DATABASE_PASSWORD,
     'database': env.DATABASE_NAME,
     'logging': env.DATABASE_LOGGING,
+    extra: {
+        max: 100,
+        idleTimeoutMillis: 5000,
+        //log: console.log
+    },
     "entities": process.env.NODE_ENV === 'production' ?
       [__dirname + "/dist/models/*.js", __dirname + "/dist/models/**/*.js",] :
       ["src/models/*.ts", "src/models/**/*.ts"],

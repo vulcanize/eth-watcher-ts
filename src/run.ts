@@ -21,6 +21,12 @@ process.on('unhandledRejection', (reason, p) => {
 			dataService.processState(data.relatedNode)
 		},
 		processHeader: (data) => dataService.processHeader(data),
-		processEvent: (data) => dataService.processEvent(null, data.relatedNode, data.decoded, data.event),
+		processEvent: (data) => {
+			if (!data) {
+				return;
+			}
+
+			dataService.processEvent(null, data.relatedNode, data.decoded, data.event);
+		},
 	})
 })();
