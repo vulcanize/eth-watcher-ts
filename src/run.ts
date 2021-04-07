@@ -22,7 +22,7 @@ process.on('unhandledRejection', (reason, p) => {
 		},
 		processHeader: (data) => dataService.processHeader(data),
 		processEvent: (data) => {
-			if (!data.relatedNode) {
+			if (!data) {
 				return;
 			}
 

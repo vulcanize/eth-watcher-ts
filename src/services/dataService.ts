@@ -324,9 +324,7 @@ VALUES
 
 		//console.log(JSON.stringify(relatedNode, null, 2));
 
-		// console.log('before updating header');
 		await this.processHeader(relatedNode?.ethHeaderCidByHeaderId);
-		// console.log('after updating header');
 
 		const contract = Store.getStore().getContractByAddressHash(relatedNode.stateLeafKey);
 		if (contract && relatedNode?.storageCidsByStateId?.nodes?.length) {
@@ -347,8 +345,9 @@ VALUES
 				//console.log('tableOptions', JSON.stringify(tableOptions, null, 2));
 
 				if (structure.type === 'mapping') {
-					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
-					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+					const queryRunner = getConnection().createQueryRunner();
+					const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
+					const slotRepository: SlotRepository = new SlotRepository(queryRunner);
 
 					if (structure.value.type === 'simple') {
 						for (const storage of relatedNode?.storageCidsByStateId?.nodes) {
@@ -466,8 +465,11 @@ VALUES
 					} else {
 						// TODO
 					}
+
+					await queryRunner.release();
 				} else if (structure.type === 'struct') {
-					const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+					const queryRunner = getConnection().createQueryRunner();
+					const slotRepository: SlotRepository = new SlotRepository(queryRunner);
 
 					let index = state.slot;
 					const data: { name: string; value: any }[] = []; // eslint-disable-line
@@ -498,6 +500,7 @@ VALUES
 					}
 
 					await slotRepository.add(tableOptions[0].name, data.map((d) => d.name), data.map((d) => d.value));
+					await queryRunner.release();
 				} else if (structure.type === 'simple') {
 					const storageLeafKey = DataService._getKeyForFixedType(state.slot);
 					// console.log('storageLeafKey', storageLeafKey);
@@ -746,7 +749,8 @@ VALUES
 
 	// saveStorageKey used to save hierarchy structure for mapping
 	private async saveStorageKeyForMapping(tableName: string, name: string, value: string, addressId: number): Promise<number> {
-		const slotRepository: SlotRepository = new SlotRepository(getConnection().createQueryRunner());
+		const queryRunner = getConnection().createQueryRunner();
+		const slotRepository: SlotRepository = new SlotRepository(queryRunner);
 
 		let id = await slotRepository.getByValue(tableName, name, value)
 		if (!id) {
@@ -759,11 +763,13 @@ VALUES
 			id = await slotRepository.add(tableName, names, values);
 		}
 
+		await queryRunner.release();
 		return id;
 	}
 
 	private async fillAddressSlotTables(contractId: number, address: Address): Promise<void> {
-		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
 
 		const states = Store.getStore().getStatesByContractId(contractId);
 		for (const state of states) {
@@ -776,6 +782,8 @@ VALUES
 				}
 			}
 		}
+
+		await queryRunner.release();
 	}
 
 	/*
@@ -785,7 +793,8 @@ VALUES
 		we need to match their hashes and update address_id in table contract_id_${contractId}_state_id_${slotId}
 	 */
 	private async matchAddressAndHash(contractId: number): Promise<void> {
-		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
 
 		const states = Store.getStore().getStatesByContractId(contractId);
 		for (const state of states) {
@@ -794,10 +803,12 @@ VALUES
 				await addressIdSlotIdRepository.syncAddressSlotHashes(contractId, state.stateId, structure);
 			}
 		}
+		await queryRunner.release();
 	}
 
 	public async prepareAddresses(contracts: Contract[] = []): Promise<void> {
-		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(getConnection().createQueryRunner());
+		const queryRunner = getConnection().createQueryRunner();
+		const addressIdSlotIdRepository: AddressIdSlotIdRepository = new AddressIdSlotIdRepository(queryRunner);
 
 		for (const contract of contracts) {
 			let contractAddress: Address = Store.getStore().getAddress(contract.address);
@@ -822,6 +833,7 @@ VALUES
 				}
 			}
 		}
+		await queryRunner.release();
 	}
 
 	private static _getTableName({ contractId, type = 'event', id}, withSchema = true): string {
