@@ -4,19 +4,19 @@ describe('getStatesfromSourceCode', () => {
   test('elementary types', async () => {
     const sourceCode = `
     contract Test {
-      string public constant name = "Uniswap";
+      string public name = "Uniswap";
 
-      uint8 public constant decimals = 18;
+      uint8 public decimals = 18;
 
-      int256 public immutable integers = -21;
+      int256 public integers = -21;
 
-      bool internal constant boolean = true;
+      bool internal boolean = true;
 
-      address private constant plainAddress = '0x1ca7c995f8eF0A2989BbcE08D5B7Efe50A584aa1'
+      address private plainAddress = '0x1ca7c995f8eF0A2989BbcE08D5B7Efe50A584aa1'
 
-      address payable constant payableAddress = '0xbb38B6F181541a6cEdfDac0b94175B2431Aa1A02'
+      address payable payableAddress = '0xbb38B6F181541a6cEdfDac0b94175B2431Aa1A02'
 
-      bytes32 constant byteText = "ByteText";
+      bytes32 byteText = "ByteText";
     }
     `;
 
@@ -90,7 +90,7 @@ describe('getStatesfromSourceCode', () => {
         uint32 fromBlock;
         uint96 votes;
       }
-      
+
       Checkpoint checkpoint;
 
       Checkpoint[] public checkpointList;
@@ -163,6 +163,26 @@ describe('getStatesfromSourceCode', () => {
         type: 'mapping (address => ComplexCheckpoint) complexCheckpointMap; struct Checkpoint {uint32 fromBlock;uint96 votes;} struct NestedCheckpoint {uint32 fromBlock;SomeVotes votes;} struct SomeVotes {uint96 votes;} struct KeyFlag {uint key;bool deleted;} struct ComplexCheckpoint {uint32 fromBlock;mapping (uint => SomeVotes) votes;KeyFlag[] keys;}',
         variable: 'complexCheckpointMap'
       }
+    ])
+  })
+
+  test('constant and immutable state variables', async () => {
+    const sourceCode = `
+    contract Test {
+      string public name = "Uniswap";
+
+      uint public constant decimals = 18;
+
+      int public integers = -21;
+
+      bool internal immutable boolean = true;
+    }
+    `;
+
+    const states = await getStatesFromSourceCode(sourceCode);
+    expect(states).toStrictEqual([
+      { slot: 0, type: 'string name;', variable: 'name' },
+      { slot: 1, type: 'int integers;', variable: 'integers' }
     ])
   })
 });

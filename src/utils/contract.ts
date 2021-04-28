@@ -55,7 +55,7 @@ export const getStatesFromSourceCode = async(sourceCode: string): Promise<State[
     const states = contractDefinition?.subNodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
     const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
     // TODO: Handle EnumDefinition type subnodes.
-    
+
     list = list.concat(states?.map((item, slot) => {
       const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
       return {
