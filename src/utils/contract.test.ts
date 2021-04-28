@@ -166,23 +166,22 @@ describe('getStatesfromSourceCode', () => {
     ])
   })
 
-  test('constant and immutable state variables', async () => {
+  test('constant state variables', async () => {
     const sourceCode = `
     contract Test {
       string public name = "Uniswap";
 
       uint public constant decimals = 18;
 
-      int public integers = -21;
-
-      bool internal immutable boolean = true;
+      bool internal boolean = true;
     }
     `;
 
     const states = await getStatesFromSourceCode(sourceCode);
+
     expect(states).toStrictEqual([
       { slot: 0, type: 'string name;', variable: 'name' },
-      { slot: 1, type: 'int integers;', variable: 'integers' }
+      { slot: 1, type: 'bool boolean;', variable: 'boolean' }
     ])
   })
 });

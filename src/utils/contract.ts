@@ -56,14 +56,18 @@ export const getStatesFromSourceCode = async(sourceCode: string): Promise<State[
     const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
     // TODO: Handle EnumDefinition type subnodes.
 
-    list = list.concat(states?.map((item, slot) => {
-      const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
-      return {
-        slot,
-        type,
-        variable: item.variables[0]?.name,
-      }
-    }));
+    // isImmutable property of state variable is not present in type StateVariableDeclaration.
+    // TODO: Filter immutable variables after support added in https://github.com/ConsenSys/solidity-parser-antlr
+    list = list.concat(states?.filter((item) => !item.variables[0]?.isDeclaredConst)
+      .map((item, slot) => {
+        const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
+        return {
+          slot,
+          type,
+          variable: item.variables[0]?.name,
+        }
+      })
+    );
   }
 
   return list as State[];
