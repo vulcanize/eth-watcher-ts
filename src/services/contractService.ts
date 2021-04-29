@@ -1,5 +1,3 @@
-
-import { StateVariableDeclaration, StructDefinition } from 'solidity-parser-diligence';
 import { getConnection } from 'typeorm';
 import Contract from '../models/contract/contract';
 import Event from '../models/contract/event';
@@ -12,11 +10,10 @@ import MethodRepository from '../repositories/contract/methodRepository';
 import StateRepository from '../repositories/contract/stateRepository';
 import AddressRepository from '../repositories/data/addressRepository';
 import { ABI } from "../types";
-import { structureToSignatureType } from './dataTypeParser';
 import ApplicationError from "../errors/applicationError";
+import { getStatesFromSourceCode } from '../utils/contract';
 
 const childProcess = require('child_process'); // eslint-disable-line
-const parser = require('@solidity-parser/parser'); // eslint-disable-line
 
 type ContractParam = {
 	address: string;
@@ -95,7 +92,7 @@ export default class ContractService {
 
 				// prepare states
 				const stateIds: number[] = [];
-				const stateObjects = await this.getStatesFromSourceCode(contractObj.sourceCode);
+				const stateObjects = await getStatesFromSourceCode(contractObj.sourceCode);
 				for (const stateObject of stateObjects) {
 					const state = await stateRepository.add({
 						slot: stateObject.slot,
@@ -155,30 +152,6 @@ export default class ContractService {
 				}
 			});
 		})
-	}
-
-	private async getStatesFromSourceCode(sourceCode: string): Promise<State[]> {
-		const ast = parser.parse(sourceCode, {
-			tolerant: true,
-		});
-
-		let list = [];
-		const contractDefinitions = ast?.children?.filter((item) => item.type === 'ContractDefinition');
-		for (const contractDefinition of contractDefinitions) {
-			const states = contractDefinition?.subNodes.filter(n => n.type == 'StateVariableDeclaration') as StateVariableDeclaration[];
-			const structs = contractDefinition?.subNodes.filter(n => n.type == 'StructDefinition') as StructDefinition[];
-
-			list = list.concat(states?.map((item, slot) => {
-				const type: string = structureToSignatureType(item.variables[0]?.name, item.variables[0]?.typeName, structs).signature;
-				return {
-					slot,
-					type,
-					variable: item.variables[0]?.name,
-				}
-			}));
-		}
-
-		return list as State[];
 	}
 
 	private getEventsFromABI(abi: ABI): string[] {
