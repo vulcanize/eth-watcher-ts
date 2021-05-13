@@ -261,6 +261,23 @@ export default class GraphqlRepository {
 						txRoot
 						uncleRoot
 						stateRoot
+						ethTransactionCidsByHeaderId {
+						  nodes {
+							id
+							cid
+							headerId
+							index
+							mhKey
+							nodeId
+							dst
+							src
+							txData
+							txHash
+							blockByMhKey {
+							  data
+							}
+						  }
+						}
 					}
 					}
 				}
