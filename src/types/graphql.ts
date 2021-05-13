@@ -26,6 +26,10 @@ export type EthTransactionCid = {
     blockByMhKey: BlockByMhKey;
 };
 
+export type ethTransactionCids = {
+    nodes: EthTransactionCid[];
+}
+
 export type EthHeaderCid = {
     td: string;
     cid: string;
@@ -42,6 +46,7 @@ export type EthHeaderCid = {
     uncleRoot: string;
     timesValidated: number;
     timestamp: string;
+    ethTransactionCidsByHeaderId: ethTransactionCids;
 }
 
 export type EthStateCid = {

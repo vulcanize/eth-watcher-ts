@@ -31,7 +31,7 @@ services:
     image: postgres:10.12-alpine
     environment:
       - POSTGRES_USER=vdbm
-      - POSTGRES_DB=vulcanize_public
+      - POSTGRES_DB=indexer
       - POSTGRES_PASSWORD=password
     volumes:
       - indexer_db_data:/var/lib/postgresql/data
