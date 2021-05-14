@@ -43,13 +43,18 @@ const argv = yargs.parserConfiguration({
         type: 'string',
         default: '',
         describe: 'Solidity compiler version'
+    },
+    runBackfiller: {
+        type: 'boolean',
+        default: false,
+        describe: 'Run backfiller'
     }
 }).argv;
 
 (async (): Promise<void> => {
 	const connectionOptions = await getConnectionOptions();
 	createConnection(connectionOptions).then(async () => {
-        const { name, address, sourcePath, artifactPath, startingBlock, compilerVersion } = argv;
+        const { name, address, sourcePath, artifactPath, startingBlock, compilerVersion, runBackfiller } = argv;
 
         const contracts = [];
 
@@ -67,7 +72,7 @@ const argv = yargs.parserConfiguration({
         contracts.push(contract);
 
         const contractService = new ContractService();
-        const data = await contractService.addContracts(null, contracts);
+        const data = await contractService.addContracts(null, contracts, runBackfiller);
         console.log(data);
     });
 })();

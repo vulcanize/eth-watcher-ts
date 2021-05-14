@@ -23,7 +23,7 @@ export default class DefaultController {
 			const contracts = req.body.contracts;
 			const apikey = req.body.apikey;
 
-			const data = await contractService.addContracts(apikey, contracts);
+			const data = await contractService.addContracts(apikey, contracts, true);
 
 			res.status(HttpStatusCodes.OK).json({
 				message: 'OK',
