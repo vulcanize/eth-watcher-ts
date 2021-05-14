@@ -62,7 +62,7 @@ export default class ContractService {
 	}
 
 
-	public async addContracts (apiKey: string, contracts: ContractParam[]): Promise<{ success; fail }> {
+	public async addContracts (apiKey: string, contracts: ContractParam[], runBackfiller: boolean): Promise<{ success; fail }> {
 		const eventRepository: EventRepository = getConnection().getCustomRepository(EventRepository);
 		const stateRepository: StateRepository = getConnection().getCustomRepository(StateRepository);
 		const contractRepository: ContractRepository = getConnection().getCustomRepository(ContractRepository);
@@ -121,7 +121,7 @@ export default class ContractService {
 			}
 		}
 
-		if (contractIds && contractIds.length) {
+		if (contractIds && contractIds.length && runBackfiller) {
 			this.runBackfillService(contractIds); // async
 		}
 
