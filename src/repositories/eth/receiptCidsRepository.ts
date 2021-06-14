@@ -7,7 +7,6 @@ import { EthReceiptCid } from "../../types";
 export default class ReceiptCidsRepository extends Repository<ReceiptCids> {
 
 	public async add(receipt: EthReceiptCid, tx: TransactionCids): Promise<ReceiptCids> {
-		const {} = receipt;
 		const result = await this.createQueryBuilder()
 			.insert()
 			.values({
