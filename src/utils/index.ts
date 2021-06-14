@@ -73,3 +73,14 @@ export const decodeTransactionData = (data: string) => { // eslint-disable-line
         s: decoded[8].toString('hex'),
     }
 }
+
+export const decodeReceiptData = (data: string) => { // eslint-disable-line
+    const buffer = Buffer.from(data.replace('\\x',''), 'hex');
+    const decoded: any = rlp.decode(buffer); // eslint-disable-line
+
+    return {
+        status: decoded[0].toString('hex'),
+        gasUsed: decoded[1].toString('hex'),
+        data: decoded[2].toString('hex'),
+    }
+}
