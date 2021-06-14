@@ -54,6 +54,12 @@ export default class ReceiptCids {
 	@Column("varchar", { name: "log_contracts", nullable: true, array: true })
 	logContracts: string[] | null;
 
+	@Column("character varying", { name: "post_state", nullable: true, length: 66 })
+	postState: string | null;
+
+	@Column("integer", { name: "post_status", unique: true })
+	postStatus: number | null;
+
 	@OneToOne(
 		() => TransactionCids,
 		(transactionCids) => transactionCids.receiptCids,
