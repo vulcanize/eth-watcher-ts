@@ -12,6 +12,7 @@ import GraphqlService from './graphqlService';
 import HeaderCids from '../models/eth/headerCids';
 import TransactionCids from '../models/eth/transactionCids';
 import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
+import ReceiptCidsRepository from '../repositories/eth/receiptCidsRepository';
 import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
 import StateCids from '../models/eth/stateCids';
 import State from '../models/contract/state';
@@ -37,6 +38,7 @@ import {
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 import BlockRepository from "../repositories/eth/blockRepository";
 import {decodeStorageCid, increaseHexByOne} from "../utils";
+import ReceiptCids from 'models/eth/receiptCids';
 
 const LIMIT = 1000;
 
@@ -295,6 +297,20 @@ VALUES
 			const transaction = await transactionCidsRepository.add(headerId, ethTransaction);
 
 			return transaction;
+		});
+	}
+
+	public async processReceipt(receipt: EthReceiptCid, tx: TransactionCids): Promise<ReceiptCids> {
+		if (!receipt) {
+			return;
+		}
+
+		return getConnection().transaction(async (entityManager) => {
+			const receiptRepository: ReceiptCidsRepository = entityManager.getCustomRepository(ReceiptCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+
+			await blockRepository.add(receipt.mhKey, receipt.blockByMhKey.data);
+			return receiptRepository.add(receipt, tx);
 		});
 	}
 

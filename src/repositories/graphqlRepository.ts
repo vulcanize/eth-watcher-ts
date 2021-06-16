@@ -276,6 +276,22 @@ export default class GraphqlRepository {
 							blockByMhKey {
 							  data
 							}
+							receiptCidByTxId {
+								blockByMhKey {
+									data
+								}
+								postStatus
+								cid
+								contract
+								contractHash
+								topic0S
+								topic1S
+								topic2S
+								topic3S
+								postState
+								logContracts
+								mhKey
+							}
 						  }
 						}
 					}

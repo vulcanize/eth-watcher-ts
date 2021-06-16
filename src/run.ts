@@ -26,7 +26,8 @@ process.on('unhandledRejection', (reason, p) => {
 			if (data?.ethTransactionCidsByHeaderId?.nodes && data?.ethTransactionCidsByHeaderId?.nodes.length > 0) {
 				const txs = data.ethTransactionCidsByHeaderId.nodes;
 				for (const tx of txs) {
-					await dataService.processTransaction(tx, header.id);
+					const txCid = await dataService.processTransaction(tx, header.id);
+					await dataService.processReceipt(tx.receiptCidByTxId, txCid);
 				}
 			}
 		},

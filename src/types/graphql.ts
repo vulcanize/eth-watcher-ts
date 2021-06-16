@@ -11,6 +11,8 @@ export type EthReceiptCid = {
     contract: string;
     blockByMhKey: BlockByMhKey;
     ethTransactionCidByTxId: EthTransactionCid;
+    postState: string;
+    postStatus: number;
 };
 
 export type EthTransactionCid = {
@@ -24,6 +26,7 @@ export type EthTransactionCid = {
     txHash: string;
     ethHeaderCidByHeaderId: EthHeaderCid;
     blockByMhKey: BlockByMhKey;
+    receiptCidByTxId: EthReceiptCid;
 };
 
 export type ethTransactionCids = {
