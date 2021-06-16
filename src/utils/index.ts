@@ -84,3 +84,19 @@ export const decodeReceiptData = (data: string) => { // eslint-disable-line
         data: decoded[2].toString('hex'),
     }
 }
+
+export const decodeExtra = (data: string) => {  // eslint-disable-line
+    const extra = Buffer.from(data.slice(0, 64), 'hex')
+    let right = extra.length - 1
+    for (; right >= 0 && extra[right] == 0; right--) {} // eslint-disable-line
+    if (right % 2 != 0){
+        right++
+    }
+    const tmp: any = rlp.decode(extra.slice(0, right+1))  // eslint-disable-line
+    return tmp.reduce(function(str, value, i){
+        if (i === 0) {
+            return value.toString('hex')
+        }
+        return `${str}/${value.toString('utf-8')}`
+    }, '');
+}
