@@ -108,11 +108,14 @@ export const decodeExtra = (data: string) => {  // eslint-disable-line
  */
 export const extractMinerFromExtra = (blockRlp: string): string => {
     const blockRlpBuf = mhDataToBuffer(blockRlp);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const decoded: any = rlp.decode(blockRlpBuf);
     const extra = decoded[12];
     // last 65 bytes are miner signature
     const sig = extra.slice(extra.length - 65);
+
     // convert hex signature to v, r, s format
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const signature = fromRpcSig(sig as any as string);
 
     // to recovery miner address from signature we need to get block hash without this signature
