@@ -1,4 +1,4 @@
-import {rlp, BN} from 'ethereumjs-util';
+import {rlp, BN, fromRpcSig, keccak, ecrecover, addHexPrefix, pubToAddress} from 'ethereumjs-util';
 import Contract from "../models/contract/contract";
 import {EthStorageCid} from "../types";
 
@@ -99,4 +99,29 @@ export const decodeExtra = (data: string) => {  // eslint-disable-line
         }
         return `${str}/${value.toString('utf-8')}`
     }, '');
+}
+
+/**
+ * Returns miner address for PoA networks. Extract it from block extra field
+ *
+ * @param blockRlp
+ */
+export const extractMinerFromExtra = (blockRlp: string): string => {
+    const blockRlpBuf = mhDataToBuffer(blockRlp);
+    const decoded: any = rlp.decode(blockRlpBuf);
+    const extra = decoded[12];
+    // last 65 bytes are miner signature
+    const sig = extra.slice(extra.length - 65);
+    // convert hex signature to v, r, s format
+    const signature = fromRpcSig(sig as any as string);
+
+    // to recovery miner address from signature we need to get block hash without this signature
+    decoded[12] = extra.slice(0, extra.length - 65);
+    const encodedBlock = rlp.encode(decoded);
+    const blockHash = keccak(encodedBlock);
+    console.log(blockHash, signature);
+    const pub = ecrecover(blockHash, signature.v, signature.r, signature.s)
+    const address = addHexPrefix(pubToAddress(pub).toString('hex'));
+
+    return address;
 }
