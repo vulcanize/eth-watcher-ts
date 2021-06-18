@@ -5,4 +5,5 @@ module.exports = {
     transform: {
         "^.+\\.ts$": "ts-jest"
     },
+    testEnvironment: './src/jest-environment.js',
 };
