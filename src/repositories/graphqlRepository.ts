@@ -240,61 +240,74 @@ export default class GraphqlRepository {
 			subscription SubscriptionHeader {
 				listen(topic: "header_cids") {
 					relatedNode {
-					... on EthHeaderCid {
-						id
-						td
-						blockHash
-						blockNumber
-						blockByMhKey {
-							data
-						}
-						bloom
-						cid
-						mhKey
-						nodeId
-						ethNodeId
-						parentHash
-						receiptRoot
-						reward
-						timesValidated
-						timestamp
-						txRoot
-						uncleRoot
-						stateRoot
-						ethTransactionCidsByHeaderId {
-						  nodes {
+						... on EthHeaderCid {
 							id
+							td
+							blockHash
+							blockNumber
+							blockByMhKey {
+								data
+							}
+							bloom
 							cid
-							headerId
-							index
 							mhKey
 							nodeId
-							dst
-							src
-							txData
-							txHash
-							blockByMhKey {
-							  data
-							}
-							receiptCidByTxId {
-								blockByMhKey {
-									data
+							ethNodeId
+							parentHash
+							receiptRoot
+							reward
+							timesValidated
+							timestamp
+							txRoot
+							uncleRoot
+							stateRoot
+							ethTransactionCidsByHeaderId {
+								nodes {
+									id
+									cid
+									headerId
+									index
+									mhKey
+									nodeId
+									dst
+									src
+									txData
+									txHash
+									blockByMhKey {
+										data
+									}
+									receiptCidByTxId {
+										blockByMhKey {
+											data
+										}
+										postStatus
+										cid
+										contract
+										contractHash
+										topic0S
+										topic1S
+										topic2S
+										topic3S
+										postState
+										logContracts
+										mhKey
+									}
 								}
-								postStatus
-								cid
-								contract
-								contractHash
-								topic0S
-								topic1S
-								topic2S
-								topic3S
-								postState
-								logContracts
-								mhKey
 							}
-						  }
+							uncleCidsByHeaderId {
+								nodes {
+									blockByMhKey {
+										data
+										key
+									}
+									blockHash
+									parentHash
+									cid
+									mhKey
+									reward
+								}
+							}
 						}
-					}
 					}
 				}
 			}

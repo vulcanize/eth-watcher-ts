@@ -10,10 +10,12 @@ import Contract from '../models/contract/contract';
 import ProgressRepository from '../repositories/data/progressRepository';
 import GraphqlService from './graphqlService';
 import HeaderCids from '../models/eth/headerCids';
+import UncleCids from '../models/eth/uncleCids';
 import TransactionCids from '../models/eth/transactionCids';
 import TransactionCidsRepository from '../repositories/eth/transactionCidsRepository';
 import ReceiptCidsRepository from '../repositories/eth/receiptCidsRepository';
 import HeaderCidsRepository from '../repositories/eth/headerCidsRepository';
+import UncleCidsRepository from '../repositories/eth/uncleCidsRepository';
 import StateCids from '../models/eth/stateCids';
 import State from '../models/contract/state';
 import ApplicationError from '../errors/applicationError';
@@ -29,6 +31,7 @@ import {
 	ABI,
 	ABIElem,
 	ABIInput, ABIInputData,
+	EthUncleCid,
 	EthHeaderCid,
 	EthReceiptCid,
 	EthStateCid,
@@ -329,6 +332,20 @@ VALUES
 
 			return header;
 		});
+	}
+
+	public async processUncle(rawUncle: EthUncleCid, headerId: number): Promise<UncleCids> {
+		if (!rawUncle) {
+			return null;
+		}
+
+		return getConnection().transaction(async (entityManager) => {
+			const uncleCidsRepository: UncleCidsRepository = entityManager.getCustomRepository(UncleCidsRepository);
+			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
+
+			await blockRepository.add(rawUncle.mhKey, rawUncle.blockByMhKey.key)
+			return uncleCidsRepository.add(headerId, rawUncle);
+		})
 	}
 
 	// TODO: add decoded values
