@@ -33,6 +33,19 @@ export type ethTransactionCids = {
     nodes: EthTransactionCid[];
 }
 
+export type EthUncleCid = {
+    blockByMhKey: BlockByMhKey;
+    blockHash: string;
+    parentHash: string;
+    cid: string;
+    mhKey: string;
+    reward: string;
+}
+
+export type ethUncleCids = {
+    nodes: EthUncleCid[];
+}
+
 export type EthHeaderCid = {
     td: string;
     cid: string;
@@ -50,6 +63,7 @@ export type EthHeaderCid = {
     timesValidated: number;
     timestamp: string;
     ethTransactionCidsByHeaderId: ethTransactionCids;
+    uncleCidsByHeaderId: ethUncleCids;
 }
 
 export type EthStateCid = {
@@ -69,7 +83,6 @@ export type EthStorageCid = {
     blockByMhKey: BlockByMhKey;
     storageLeafKey: string;
     storagePath: string;
-
 };
 
 export type BlockByMhKey = {

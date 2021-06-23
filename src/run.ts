@@ -23,6 +23,11 @@ process.on('unhandledRejection', (reason, p) => {
 		},
 		processHeader: async (data) => {
 			const header: HeaderCids = await dataService.processHeader(data);
+			if (data?.uncleCidsByHeaderId?.nodes && data?.uncleCidsByHeaderId?.nodes.length > 0) {
+				for (const uncle of data?.uncleCidsByHeaderId?.nodes) {
+					await dataService.processUncle(uncle, header.id);
+				}
+			}
 			if (data?.ethTransactionCidsByHeaderId?.nodes && data?.ethTransactionCidsByHeaderId?.nodes.length > 0) {
 				const txs = data.ethTransactionCidsByHeaderId.nodes;
 				for (const tx of txs) {
