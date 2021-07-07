@@ -131,10 +131,12 @@ export const extractMinerFromExtra = (blockRlp: string): string => {
 
 export const calcBlockSize = (headerRLPStr: string, txsRLPStr: string[], unclesRLPStr: string[]): number => {
     const headerRlp = Buffer.from(headerRLPStr, 'hex');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const headerDecoded: any = rlp.decode(headerRlp);
 
     const txRlp = txsRLPStr.map(tx => {
         const txRlp = Buffer.from(tx, 'hex');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const txDecoded: any = rlp.decode(txRlp);
 
         return txDecoded;
@@ -142,6 +144,7 @@ export const calcBlockSize = (headerRLPStr: string, txsRLPStr: string[], unclesR
 
     const uncleRlp = unclesRLPStr.map(uncle => {
         const uncleRlp = Buffer.from(uncle, 'hex');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const uncleDecoded: any = rlp.decode(uncleRlp);
 
         return uncleDecoded;
