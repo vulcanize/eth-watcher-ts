@@ -128,3 +128,27 @@ export const extractMinerFromExtra = (blockRlp: string): string => {
 
     return address;
 }
+
+export const calcBlockSize = (headerRLPStr: string, txsRLPStr: string[], unclesRLPStr: string[]): number => {
+    const headerRlp = Buffer.from(headerRLPStr, 'hex');
+    const headerDecoded: any = rlp.decode(headerRlp);
+
+    const txRlp = txsRLPStr.map(tx => {
+        const txRlp = Buffer.from(tx, 'hex');
+        const txDecoded: any = rlp.decode(txRlp);
+
+        return txDecoded;
+    });
+
+    const uncleRlp = unclesRLPStr.map(uncle => {
+        const uncleRlp = Buffer.from(uncle, 'hex');
+        const uncleDecoded: any = rlp.decode(uncleRlp);
+
+        return uncleDecoded;
+    });
+
+    const extblock = [headerDecoded, txRlp, uncleRlp];
+    const encodedBlock = rlp.encode(extblock);
+
+    return encodedBlock.byteLength;
+}
