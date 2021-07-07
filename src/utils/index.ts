@@ -80,7 +80,7 @@ export const decodeReceiptData = (data: string) => { // eslint-disable-line
 
     return {
         status: decoded[0].toString('hex'),
-        gasUsed: decoded[1].toString('hex'),
+        cumulativeGasUsed: decoded[1].toString('hex'),
         data: decoded[2].toString('hex'),
     }
 }
