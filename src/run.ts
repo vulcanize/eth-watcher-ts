@@ -30,9 +30,18 @@ process.on('unhandledRejection', (reason, p) => {
 			}
 			if (data?.ethTransactionCidsByHeaderId?.nodes && data?.ethTransactionCidsByHeaderId?.nodes.length > 0) {
 				const txs = data.ethTransactionCidsByHeaderId.nodes;
-				for (const tx of txs) {
+				const receiptFields = dataService.deriveReceiptFields(txs);
+				if (txs.length != receiptFields.length) {
+					console.warn("transaction and receipt count mismatch");
+
+					return;
+				}
+				for (const [index, tx] of txs.entries()) {
 					const txCid = await dataService.processTransaction(tx, header.id);
-					await dataService.processReceipt(tx.receiptCidByTxId, txCid);
+
+					const receipt = tx.receiptCidByTxId;
+					const additionalFields = receiptFields[index];
+					await dataService.processReceipt(receipt, txCid, additionalFields);
 				}
 			}
 		},

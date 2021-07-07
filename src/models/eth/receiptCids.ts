@@ -57,8 +57,11 @@ export default class ReceiptCids {
 	@Column("character varying", { name: "post_state", nullable: true, length: 66 })
 	postState: string | null;
 
-	@Column("integer", { name: "post_status", unique: true })
+	@Column("integer", { name: "post_status"})
 	postStatus: number | null;
+
+	@Column("bigint", { name: "gas_used" })
+	gasUsed: string;
 
 	@OneToOne(
 		() => TransactionCids,

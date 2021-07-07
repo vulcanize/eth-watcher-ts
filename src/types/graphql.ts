@@ -15,6 +15,10 @@ export type EthReceiptCid = {
     postStatus: number;
 };
 
+export type DerivedReceipt = {
+    gasUsed: number;
+}
+
 export type EthTransactionCid = {
     cid: string;
     headerId: number;

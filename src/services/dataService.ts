@@ -1,9 +1,8 @@
-
 import to from 'await-to-js';
-import { getConnection, Table } from 'typeorm';
-import { TableOptions } from 'typeorm/schema-builder/options/TableOptions';
+import {getConnection, Table} from 'typeorm';
+import {TableOptions} from 'typeorm/schema-builder/options/TableOptions';
 import * as abi from 'ethereumjs-abi';
-import {keccak256, keccakFromHexString, rlp, BN, toAscii, toUtf8} from 'ethereumjs-util';
+import {BN, keccak256, keccakFromHexString, rlp, toAscii, toUtf8} from 'ethereumjs-util';
 import Store from '../store';
 import Event from '../models/contract/event';
 import Contract from '../models/contract/contract';
@@ -23,24 +22,25 @@ import StateProgressRepository from '../repositories/data/stateProgressRepositor
 import Address from '../models/data/address';
 import AddressRepository from '../repositories/data/addressRepository';
 import AddressIdSlotIdRepository from '../repositories/data/addressIdSlotIdRepository';
-import { toStructure, toTableOptions } from './dataTypeParser';
+import {toStructure, toTableOptions} from './dataTypeParser';
 import SlotRepository from '../repositories/data/slotRepository';
 import EventRepository from '../repositories/data/eventRepository';
 import DecodeService from './decodeService';
 import {
 	ABI,
 	ABIElem,
-	ABIInput, ABIInputData,
-	EthUncleCid,
+	ABIInput,
+	ABIInputData, DerivedReceipt,
 	EthHeaderCid,
 	EthReceiptCid,
 	EthStateCid,
 	EthStorageCid,
-	EthTransactionCid
+	EthTransactionCid,
+	EthUncleCid
 } from "../types";
 import BackfillProgressRepository from '../repositories/data/backfillProgressRepository';
 import BlockRepository from "../repositories/eth/blockRepository";
-import {decodeStorageCid, increaseHexByOne} from "../utils";
+import {decodeReceiptData, decodeStorageCid, increaseHexByOne} from "../utils";
 import ReceiptCids from 'models/eth/receiptCids';
 
 const LIMIT = 1000;
@@ -303,7 +303,35 @@ VALUES
 		});
 	}
 
-	public async processReceipt(receipt: EthReceiptCid, tx: TransactionCids): Promise<ReceiptCids> {
+	public deriveReceiptFields(txs: EthTransactionCid[]): DerivedReceipt[] {
+		const result = [];
+		for (let i = 0; i < txs.length; i++) {
+			const tx = txs[i];
+
+			const currentReceipt = tx.receiptCidByTxId;
+			const currentReceiptRlp = currentReceipt.blockByMhKey.data;
+			const currentDecodedRlp = decodeReceiptData(currentReceiptRlp);
+
+			let gasUsed;
+			if (i == 0) {
+				gasUsed = currentDecodedRlp.cumulativeGasUsed;
+			} else {
+				const prevReceipt = txs[i - 1].receiptCidByTxId;
+				const prevReceiptRlp = prevReceipt.blockByMhKey.data;
+				const prevDecodedRlp = decodeReceiptData(prevReceiptRlp);
+
+				gasUsed = currentDecodedRlp.cumulativeGasUsed - prevDecodedRlp.cumulativeGasUsed
+			}
+
+			result.push({
+				gasUsed,
+			})
+		}
+
+		return result;
+	}
+
+	public async processReceipt(receipt: EthReceiptCid, tx: TransactionCids, additionalFields: DerivedReceipt): Promise<ReceiptCids> {
 		if (!receipt) {
 			return;
 		}
@@ -313,7 +341,7 @@ VALUES
 			const blockRepository: BlockRepository = entityManager.getCustomRepository(BlockRepository);
 
 			await blockRepository.add(receipt.mhKey, receipt.blockByMhKey.data);
-			return receiptRepository.add(receipt, tx);
+			return receiptRepository.add(receipt, additionalFields, tx);
 		});
 	}
 
